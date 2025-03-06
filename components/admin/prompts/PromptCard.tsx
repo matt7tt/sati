@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import Button from '@/components/ui/Button';
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Text } from "@/components/ui/typography"
 
 interface PromptProps {
   id: string;
@@ -18,26 +20,25 @@ export default function PromptCard({ prompt }: Props) {
   const [isExpanded, setIsExpanded] = useState(false);
   
   return (
-    <div className="border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
-      <h3 className="text-lg font-medium">{prompt.title}</h3>
-      
-      <p className={`mt-2 ${isExpanded ? '' : 'line-clamp-3'}`}>
-        {prompt.content}
-      </p>
-      
-      <div className="mt-4 flex justify-between items-center">
+    <Card>
+      <CardHeader>
+        <CardTitle>{prompt.title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Text className={`mt-2 ${isExpanded ? '' : 'line-clamp-3'}`}>
+          {prompt.content}
+        </Text>
+      </CardContent>
+      <CardFooter className="flex justify-end gap-2">
         <Button 
           onClick={() => setIsExpanded(!isExpanded)}
           variant="ghost"
         >
           {isExpanded ? 'Show less' : 'Show more'}
         </Button>
-        
-        <div className="space-x-2">
-          <Button variant="outline">Edit</Button>
-          <Button variant="destructive">Delete</Button>
-        </div>
-      </div>
-    </div>
+        <Button variant="outline">Edit</Button>
+        <Button variant="destructive">Delete</Button>
+      </CardFooter>
+    </Card>
   );
 } 

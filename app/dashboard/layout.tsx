@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, User, Settings, LogOut, FileText, ShieldCheck } from "lucide-react"
+import { LayoutDashboard, User, Settings, LogOut, FileText, ShieldCheck, MessageSquare, Activity, Utensils, ChevronLeft, ChevronRight, Menu } from "lucide-react"
 import type React from "react"
 
 export default function DashboardLayout({
@@ -13,53 +13,49 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const [isLoading, setIsLoading] = useState(true)
+  const [isCollapsed, setIsCollapsed] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
+    // Check if there's a saved sidebar state in localStorage
+    const savedSidebarState = localStorage.getItem("sidebar-collapsed")
+    if (savedSidebarState !== null) {
+      setIsCollapsed(savedSidebarState === "true")
+    }
+
     const checkAuth = async () => {
       try {
-        const token = localStorage.getItem("authToken")
-        const isAuthenticated = localStorage.getItem("isAuthenticated")
-
+        const token = localStorage.getItem("access_token")
         console.log("Dashboard Layout - Checking auth")
         console.log("Token exists:", !!token)
-        console.log("Is authenticated:", isAuthenticated)
 
-        if (!token || isAuthenticated !== "true") {
-          console.log("No token or not authenticated, redirecting to login...")
-          window.location.href = "/login"
+        if (!token) {
+          console.log("No token found, redirecting to login...")
+          window.location.replace("/login")
           return
-        }
-
-        // Verify with backend
-        const response = await fetch(
-          "https://e00e3da9-12ec-4202-be34-632cf709d66e-00-x1fhd1x5lbwo.worf.replit.dev/api/auth/me",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        )
-
-        if (!response.ok) {
-          throw new Error("Backend verification failed")
         }
 
         setIsLoading(false)
       } catch (error) {
         console.error("Auth check failed:", error)
-        window.location.href = "/login"
+        window.location.replace("/login")
       }
     }
 
     checkAuth()
   }, [])
 
+  const toggleSidebar = () => {
+    const newState = !isCollapsed
+    setIsCollapsed(newState)
+    localStorage.setItem("sidebar-collapsed", String(newState))
+  }
+
   const handleLogout = () => {
-    document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
-    localStorage.removeItem("authToken")
+    document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
+    localStorage.removeItem("access_token")
     localStorage.removeItem("isAuthenticated")
-    window.location.href = "/login"
+    window.location.replace("/login")
   }
 
   if (isLoading) {
@@ -71,69 +67,132 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen relative">
-      <div className="absolute inset-0 grid-background opacity-50" />
-      <aside className="w-64 bg-card/50 backdrop-blur-sm border-r border-primary/10 relative">
-        <div className="h-full flex flex-col">
-          <div className="p-6">
-            <Link href="/" className="text-xl font-bold text-primary glow-text">
-              HealthTrack
+    <div className="flex min-h-screen bg-gray-50 relative">
+      {/* Mobile Menu Toggle - Only visible on small screens */}
+      <Button
+        variant="outline"
+        size="icon"
+        className="fixed bottom-4 right-4 z-50 rounded-full shadow-md md:hidden"
+        onClick={toggleSidebar}
+      >
+        <Menu className="h-5 w-5" />
+      </Button>
+
+      {/* Sidebar */}
+      <aside 
+        className={`bg-white shadow-sm border-r flex-shrink-0 transition-all duration-300 ease-in-out
+                  ${isCollapsed ? 'w-0 md:w-12 overflow-hidden' : 'w-0 md:w-56'}
+                  ${isCollapsed ? 'md:absolute md:hover:w-56 md:hover:shadow-xl md:z-20 md:bottom-0 md:top-0' : ''}
+                  fixed md:relative left-0 top-0 h-screen md:h-auto
+                  ${!isCollapsed && 'translate-x-0'} 
+                  ${isCollapsed && '-translate-x-full md:translate-x-0'}`}
+      >
+        <div className="h-full flex flex-col relative">
+          {/* Toggle Button - Only visible on medium screens and above */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute -right-3 top-6 rounded-full h-6 w-6 border shadow-sm bg-white text-gray-600 hidden md:flex items-center justify-center"
+            onClick={toggleSidebar}
+          >
+            {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </Button>
+
+          <div className={`p-4 border-b flex items-center ${isCollapsed ? 'justify-center md:p-3' : 'justify-start'}`}>
+            <Link href="/dashboard" className={`font-bold text-primary ${isCollapsed ? 'text-lg' : 'text-xl'}`}>
+              {isCollapsed ? 'Z.' : 'Zeal.health'}
             </Link>
           </div>
-          <nav className="flex-1 px-4 space-y-2">
+          <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
             <Link
               href="/dashboard"
-              className="flex items-center gap-3 px-4 py-3 text-sm rounded-lg hover:bg-primary/10 transition-colors"
+              className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg bg-primary/5 text-primary font-medium
+                        ${isCollapsed ? 'justify-center md:px-2' : 'justify-start'}`}
+              title="Dashboard"
             >
-              <LayoutDashboard size={18} className="text-primary" />
-              Dashboard
+              <LayoutDashboard size={18} />
+              <span className={isCollapsed ? 'hidden md:group-hover:block' : ''}>Dashboard</span>
+            </Link>
+            <Link
+              href="/dashboard/chat"
+              className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-100 transition-colors
+                        ${isCollapsed ? 'justify-center md:px-2' : 'justify-start'}`}
+              title="Chat"
+            >
+              <MessageSquare size={18} />
+              <span className={isCollapsed ? 'hidden md:group-hover:block' : ''}>Chat</span>
             </Link>
             <Link
               href="/dashboard/profile"
-              className="flex items-center gap-3 px-4 py-3 text-sm rounded-lg hover:bg-primary/10 transition-colors"
+              className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-100 transition-colors
+                        ${isCollapsed ? 'justify-center md:px-2' : 'justify-start'}`}
+              title="Profile"
             >
-              <User size={18} className="text-primary" />
-              Profile
+              <User size={18} />
+              <span className={isCollapsed ? 'hidden md:group-hover:block' : ''}>Profile</span>
             </Link>
             <Link
               href="/dashboard/analyze-results"
-              className="flex items-center gap-3 px-4 py-3 text-sm rounded-lg hover:bg-primary/10 transition-colors"
+              className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-100 transition-colors
+                        ${isCollapsed ? 'justify-center md:px-2' : 'justify-start'}`}
+              title="Analyze Results"
             >
-              <FileText size={18} className="text-primary" />
-              Analyze Results
+              <FileText size={18} />
+              <span className={isCollapsed ? 'hidden md:group-hover:block' : ''}>Analyze Results</span>
+            </Link>
+            <Link
+              href="/dashboard/lab-results"
+              className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-100 transition-colors
+                        ${isCollapsed ? 'justify-center md:px-2' : 'justify-start'}`}
+              title="Lab Results"
+            >
+              <Activity size={18} />
+              <span className={isCollapsed ? 'hidden md:group-hover:block' : ''}>Lab Results</span>
+            </Link>
+            <Link
+              href="/dashboard/meals"
+              className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-100 transition-colors
+                        ${isCollapsed ? 'justify-center md:px-2' : 'justify-start'}`}
+              title="Meals"
+            >
+              <Utensils size={18} />
+              <span className={isCollapsed ? 'hidden md:group-hover:block' : ''}>Meals</span>
             </Link>
             <Link
               href="/dashboard/settings"
-              className="flex items-center gap-3 px-4 py-3 text-sm rounded-lg hover:bg-primary/10 transition-colors"
+              className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-100 transition-colors
+                        ${isCollapsed ? 'justify-center md:px-2' : 'justify-start'}`}
+              title="Settings"
             >
-              <Settings size={18} className="text-primary" />
-              Settings
+              <Settings size={18} />
+              <span className={isCollapsed ? 'hidden md:group-hover:block' : ''}>Settings</span>
             </Link>
           </nav>
-          <div className="p-4 space-y-2 border-t border-primary/10">
-            <Link
-              href="/admin"
-              className="flex items-center gap-3 px-4 py-3 text-sm rounded-lg hover:bg-primary/10 transition-colors"
-            >
-              <ShieldCheck size={18} className="text-primary" />
-              Admin Panel
-            </Link>
+          <div className={`p-3 border-t ${isCollapsed ? 'flex justify-center' : ''}`}>
             <Button
               onClick={handleLogout}
               variant="ghost"
-              className="w-full justify-start gap-3 text-sm hover:bg-primary/10 hover:text-foreground"
+              className={`${isCollapsed ? 'w-9 p-0 justify-center' : 'w-full justify-start'} gap-2 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900`}
+              title="Logout"
             >
-              <LogOut size={18} className="text-primary" />
-              Logout
+              <LogOut size={18} className="text-gray-500" />
+              <span className={isCollapsed ? 'hidden' : ''}>Logout</span>
             </Button>
           </div>
         </div>
       </aside>
-      <main className="flex-1 overflow-y-auto relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
-        <div className="relative max-w-6xl mx-auto px-8 py-12">{children}</div>
+
+      {/* Overlay for mobile sidebar */}
+      {!isCollapsed && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-10 md:hidden"
+          onClick={toggleSidebar}
+        />
+      )}
+
+      <main className="flex-1 overflow-y-auto">
+        {children}
       </main>
     </div>
   )
 }
-

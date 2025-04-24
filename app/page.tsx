@@ -6,11 +6,14 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden">
       {/* Grid Background */}
-      <div className="absolute inset-0 grid-background" />
+      <div className="absolute inset-0 grid-background opacity-50" />
       
-      <NavBar />
-      <HeroSection />
-      <FeaturesSection />
+      {/* Content */}
+      <div className="relative z-10">
+        <NavBar />
+        <HeroSection />
+        <FeaturesSection />
+      </div>
     </div>
   );
 }

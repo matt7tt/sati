@@ -50,20 +50,189 @@ interface OnboardingFormProps {
   onStepChange?: (step: number) => void;
 }
 
+interface OnboardingFormData {
+  // Basic fields
+  fullName: string;
+  dateOfBirth: string;
+  genderIdentity: string;
+  phoneNumber: string;
+  emailAddress: string;
+  streetAddress: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+  ethnicity: string;
+  emergencyContactName: string;
+  emergencyContactRelationship: string;
+  emergencyContactPhone: string;
+
+  // Health History
+  pastMedicalConditions: string;
+  familyMedicalHistory: string;
+  currentMedications: string;
+  pastMedications: string;
+  allergiesIntolerances: string;
+  tetanusTdTdap: string;
+  tetanusUpToDate: boolean;
+  tetanusLastDose: string;
+  fluVaccine: boolean;
+  fluLastDose: string;
+  covidVaccine: boolean;
+  covidLastDose: string;
+  otherImmunizations: string;
+
+  // Lifestyle Factors
+  dietaryPattern: string;
+  foodSensitivities: string;
+  alcoholConsumption: string;
+  caffeineConsumption: string;
+  hydrationHabits: string;
+  exerciseType: string;
+  exerciseFrequency: string;
+  exerciseIntensity: string;
+  exerciseLimitations: string;
+  sleepDuration: string;
+  sleepQuality: string;
+  bedtimeWakingTime: string;
+  sleepDisorders: string;
+  hasSleepDisorders: boolean;
+  stressLevel: string;
+  mainStressors: string;
+  copingMechanisms: string;
+  mentalHealthHistory: string;
+  supportSystem: string;
+  socialInteractionLevel: string;
+  relationshipSatisfaction: string;
+  occupation: string;
+  workHours: string;
+  workEnvironmentStress: string;
+  workLifeBalance: string;
+  burnoutJobStrain: boolean;
+  burnoutDetails: string;
+
+  // Biometrics & Lab Data
+  height: string;
+  heightUnit: string;
+  weight: string;
+  weightUnit: string;
+  bmi: string;
+  bodyFatPercentage: string;
+  waistCircumference: string;
+  waistCircumferenceUnit: string;
+  hipCircumference: string;
+  hipCircumferenceUnit: string;
+  waistToHipRatio: string;
+  bloodPressureSystolic: string;
+  bloodPressureDiastolic: string;
+  restingHeartRate: string;
+  heartRateVariability: string;
+  vo2Max: string;
+  totalCholesterol: string;
+  ldlCholesterol: string;
+  hdlCholesterol: string;
+  triglycerides: string;
+  bloodGlucoseFasting: string;
+  bloodGlucoseA1c: string;
+  crp: string;
+  otherInflammatoryMarkers: string;
+  tsh: string;
+  testosterone: string;
+  estrogen: string;
+  cortisol: string;
+  otherHormones: string;
+  vitaminD: string;
+  vitaminB12: string;
+  ironFerritin: string;
+  otherVitaminsMinerals: string;
+
+  // Goals & Concerns
+  primaryHealthGoals: string;
+  biggestHealthConcerns: string;
+  healthGoalsConcerns: string;
+  diseasePrevention: string;
+  mentalSharpness: string;
+  vitalityEnergyLevels: string;
+  areasOfInterest: string;
+  additionalGoalsConcerns: string;
+
+  // Concerns
+  concernChronicDisease: boolean;
+  concernCognitiveDecline: boolean;
+  concernPhysicalDecline: boolean;
+  concernAppearanceChanges: boolean;
+  concernEnergyVitality: boolean;
+  concernOther: boolean;
+  concernOtherDetails: string;
+
+  // Interests
+  interestBiohacking: boolean;
+  interestLongevityScience: boolean;
+  interestRegenerativeMedicine: boolean;
+  interestPersonalizedNutrition: boolean;
+  interestAdvancedFitness: boolean;
+  interestSupplementation: boolean;
+  interestOther: boolean;
+  interestOtherDetails: string;
+
+  // Tracking & Feedback
+  insightFormatWritten: boolean;
+  insightFormatPhone: boolean;
+  insightFormatDashboard: boolean;
+  insightFormatOther: boolean;
+  insightFormatOtherDetails: string;
+  checkInFrequency: string;
+  checkInFrequencyOther: string;
+  digitalMonitoringOpenness: string;
+  wearableDeviceUse: string;
+  wearableDeviceName: string;
+  healthAppsUse: string;
+  healthAppsNames: string;
+  aiCoachingInterest: string;
+  feedbackStyleCharts: boolean;
+  feedbackStyleSimplified: boolean;
+  feedbackStyleEncouraging: boolean;
+  feedbackStyleDetailed: boolean;
+  feedbackStyleOther: boolean;
+  feedbackStyleOtherDetails: string;
+  privacyDataConcerns: string;
+
+  // Additional Data
+  completeBloodCount: string;
+  metabolicPanel: string;
+  otherLabResults: string;
+  hasRecentLabWork: boolean;
+  labWorkDate: string;
+  geneticTesting: string;
+  geneticFindings: string;
+  familyLongevity: string;
+  microbiomeTest: string;
+  microbiomeInsights: string;
+  sleepTracker: string;
+  averageSleepDuration: string;
+  sleepQualityScore: string;
+  averageDailySteps: string;
+  weeklyActiveMinutes: string;
+  otherFitnessMetrics: string;
+  averageHRV: string;
+  hrvNotes: string;
+  usesCGM: string;
+  glucoseLevels: string;
+}
+
 export default function OnboardingForm({ onStepChange }: OnboardingFormProps) {
   const [currentStep, setCurrentStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [passwordError, setPasswordError] = useState("")
-  const [formData, setFormData] = useState({
-    // Patient Information
+  const [formData, setFormData] = useState<OnboardingFormData>({
+    // Basic fields
     fullName: "",
     dateOfBirth: "",
     genderIdentity: "",
     phoneNumber: "",
     emailAddress: "",
-    // Address fields instead of single location
     streetAddress: "",
     city: "",
     state: "",
@@ -79,7 +248,6 @@ export default function OnboardingForm({ onStepChange }: OnboardingFormProps) {
     familyMedicalHistory: "",
     currentMedications: "",
     pastMedications: "",
-    // New fields for allergies and immunizations
     allergiesIntolerances: "",
     tetanusTdTdap: "",
     tetanusUpToDate: false,
@@ -103,7 +271,6 @@ export default function OnboardingForm({ onStepChange }: OnboardingFormProps) {
     sleepDuration: "",
     sleepQuality: "",
     bedtimeWakingTime: "",
-    // New fields for additional lifestyle factors
     sleepDisorders: "",
     hasSleepDisorders: false,
     stressLevel: "",
@@ -121,27 +288,22 @@ export default function OnboardingForm({ onStepChange }: OnboardingFormProps) {
     burnoutDetails: "",
     
     // Biometrics & Lab Data
-    // Anthropometrics
     height: "",
-    heightUnit: "inches",
+    heightUnit: "",
     weight: "",
-    weightUnit: "lbs",
+    weightUnit: "",
     bmi: "",
     bodyFatPercentage: "",
     waistCircumference: "",
-    waistCircumferenceUnit: "inches",
+    waistCircumferenceUnit: "",
     hipCircumference: "",
-    hipCircumferenceUnit: "inches",
+    hipCircumferenceUnit: "",
     waistToHipRatio: "",
-    
-    // Vital Signs
     bloodPressureSystolic: "",
     bloodPressureDiastolic: "",
     restingHeartRate: "",
     heartRateVariability: "",
     vo2Max: "",
-    
-    // Blood Markers
     totalCholesterol: "",
     ldlCholesterol: "",
     hdlCholesterol: "",
@@ -160,23 +322,68 @@ export default function OnboardingForm({ onStepChange }: OnboardingFormProps) {
     ironFerritin: "",
     otherVitaminsMinerals: "",
     
-    // Lab Data
+    // Goals & Concerns
+    primaryHealthGoals: "",
+    biggestHealthConcerns: "",
+    healthGoalsConcerns: "",
+    diseasePrevention: "",
+    mentalSharpness: "",
+    vitalityEnergyLevels: "",
+    areasOfInterest: "",
+    additionalGoalsConcerns: "",
+    
+    // Concerns
+    concernChronicDisease: false,
+    concernCognitiveDecline: false,
+    concernPhysicalDecline: false,
+    concernAppearanceChanges: false,
+    concernEnergyVitality: false,
+    concernOther: false,
+    concernOtherDetails: "",
+    
+    // Interests
+    interestBiohacking: false,
+    interestLongevityScience: false,
+    interestRegenerativeMedicine: false,
+    interestPersonalizedNutrition: false,
+    interestAdvancedFitness: false,
+    interestSupplementation: false,
+    interestOther: false,
+    interestOtherDetails: "",
+    
+    // Tracking & Feedback
+    insightFormatWritten: false,
+    insightFormatPhone: false,
+    insightFormatDashboard: false,
+    insightFormatOther: false,
+    insightFormatOtherDetails: "",
+    checkInFrequency: "",
+    checkInFrequencyOther: "",
+    digitalMonitoringOpenness: "",
+    wearableDeviceUse: "",
+    wearableDeviceName: "",
+    healthAppsUse: "",
+    healthAppsNames: "",
+    aiCoachingInterest: "",
+    feedbackStyleCharts: false,
+    feedbackStyleSimplified: false,
+    feedbackStyleEncouraging: false,
+    feedbackStyleDetailed: false,
+    feedbackStyleOther: false,
+    feedbackStyleOtherDetails: "",
+    privacyDataConcerns: "",
+    
+    // Additional Data
     completeBloodCount: "",
     metabolicPanel: "",
     otherLabResults: "",
     hasRecentLabWork: false,
     labWorkDate: "",
-    
-    // New fields for genetic data
     geneticTesting: "",
     geneticFindings: "",
     familyLongevity: "",
-    
-    // New fields for microbiome analysis
     microbiomeTest: "",
     microbiomeInsights: "",
-    
-    // New fields for wearable & device data
     sleepTracker: "",
     averageSleepDuration: "",
     sleepQualityScore: "",
@@ -185,41 +392,8 @@ export default function OnboardingForm({ onStepChange }: OnboardingFormProps) {
     otherFitnessMetrics: "",
     averageHRV: "",
     hrvNotes: "",
-    
-    // New fields for glucose monitor
     usesCGM: "",
     glucoseLevels: "",
-    
-    // Goals & Concerns
-    // ... existing code ...
-    
-    // Tracking & Feedback Preferences
-    insightFormatWritten: false,
-    insightFormatPhone: false,
-    insightFormatDashboard: false,
-    insightFormatOther: false,
-    insightFormatOtherDetails: "",
-    
-    checkInFrequency: "",
-    checkInFrequencyOther: "",
-    
-    digitalMonitoringOpenness: "",
-    wearableDeviceUse: "",
-    wearableDeviceName: "",
-    
-    healthAppsUse: "",
-    healthAppsNames: "",
-    
-    aiCoachingInterest: "",
-    
-    feedbackStyleCharts: false,
-    feedbackStyleSimplified: false,
-    feedbackStyleEncouraging: false,
-    feedbackStyleDetailed: false,
-    feedbackStyleOther: false,
-    feedbackStyleOtherDetails: "",
-    
-    privacyDataConcerns: ""
   })
   
   const router = useRouter()
@@ -266,26 +440,81 @@ export default function OnboardingForm({ onStepChange }: OnboardingFormProps) {
     }
   }
   
-  const registerUser = async () => {
+  const loginUser = async (email: string, password: string) => {
     try {
-      const response = await fetch('/api/auth/register', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: formData.emailAddress,
-          password: password
+          email,
+          password,
         }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Login failed');
+      }
+
+      const data = await response.json();
+      if (data.access_token) {
+        localStorage.setItem('token', data.access_token);
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
+  };
+
+  const registerUser = async () => {
+    try {
+      // Split full name into first and last name
+      const nameParts = formData.fullName.trim().split(/\s+/)
+      const firstName = nameParts[0]
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : ''
+
+      const registerData = {
+        email: formData.emailAddress,
+        first_name: firstName,
+        last_name: lastName,
+        password: password
+      };
+
+      console.log('Register Request URL:', `${process.env.NEXT_PUBLIC_API_URL}/api/auth/register`);
+      console.log('Register Request Body:', JSON.stringify(registerData, null, 2));
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(registerData),
       })
       
       if (!response.ok) {
         const errorData = await response.json()
+        console.log('Register Response Error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        });
+        if (response.status === 422) {
+          // Handle validation errors
+          const validationErrors = errorData.detail.map((err: any) => err.msg).join(', ')
+          throw new Error(`Validation error: ${validationErrors}`)
+        }
         throw new Error(errorData.message || 'Registration failed')
       }
       
       const data = await response.json()
-      return data.user_id
+      console.log('Register Response:', data);
+
+      // Login to get auth token
+      await loginUser(formData.emailAddress, password);
+
+      return data.id // Return the user ID from the response
     } catch (error) {
       console.error('Registration error:', error)
       throw error
@@ -294,10 +523,20 @@ export default function OnboardingForm({ onStepChange }: OnboardingFormProps) {
   
   const submitIntakeForm = async (userId: number) => {
     try {
+      // Format dates to ISO format
+      const formatDate = (dateStr: string) => {
+        if (!dateStr) return null;
+        const date = new Date(dateStr);
+        return date.toISOString();
+      };
+
+      // Get auth token
+      const token = localStorage.getItem('token');
+
       // Map form data to API schema
       const intakeData = {
         full_name: formData.fullName,
-        date_of_birth: formData.dateOfBirth,
+        date_of_birth: formatDate(formData.dateOfBirth),
         gender_identity: formData.genderIdentity,
         phone_number: formData.phoneNumber,
         email_address: formData.emailAddress,
@@ -317,11 +556,11 @@ export default function OnboardingForm({ onStepChange }: OnboardingFormProps) {
         past_medications: formData.pastMedications,
         allergies: formData.allergiesIntolerances,
         tetanus_up_to_date: formData.tetanusUpToDate,
-        tetanus_last_dose: formData.tetanusLastDose || null,
+        tetanus_last_dose: formatDate(formData.tetanusLastDose),
         flu: formData.fluVaccine,
-        flu_last_dose: formData.fluLastDose || null,
+        flu_last_dose: formatDate(formData.fluLastDose),
         covid19: formData.covidVaccine,
-        covid19_last_dose: formData.covidLastDose || null,
+        covid19_last_dose: formatDate(formData.covidLastDose),
         immunization_others: formData.otherImmunizations,
         dietary_pattern: formData.dietaryPattern,
         food_sensitivities: formData.foodSensitivities,
@@ -438,21 +677,32 @@ export default function OnboardingForm({ onStepChange }: OnboardingFormProps) {
         privacy_data_sharing: formData.privacyDataConcerns,
         user_id: userId
       }
+
+      console.log('Intake Form Request URL:', `${process.env.NEXT_PUBLIC_API_URL}/api/auth/intake-form`);
+      console.log('Intake Form Request Body:', JSON.stringify(intakeData, null, 2));
       
-      const response = await fetch('/api/auth/intake-form', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/intake-form`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(intakeData),
       })
       
       if (!response.ok) {
         const errorData = await response.json()
+        console.log('Intake Form Response Error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        });
         throw new Error(errorData.message || 'Failed to submit intake form')
       }
       
-      return await response.json()
+      const data = await response.json()
+      console.log('Intake Form Response:', data);
+      return data
     } catch (error) {
       console.error('Intake form submission error:', error)
       throw error

@@ -1,0 +1,706 @@
+'use client';
+
+import { useState, useEffect, ReactNode } from 'react';
+import type { Components } from 'react-markdown';
+import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
+import remarkGfm from 'remark-gfm';
+import { jsPDF } from 'jspdf';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { BarChart, Users, ArrowUpRight, Activity, Heart, Brain, Zap, AlertCircle, Utensils, Dumbbell, Pill, Stethoscope, Target } from 'lucide-react';
+import { Heading, Text } from '@/components/ui/typography';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+
+interface Insight {
+  id: number;
+  user_id: number;
+  issue: string;
+  recommendation: string;
+  updated_at: string;
+  created_date: string;
+  area: string;
+  insight_id: number;
+}
+
+interface HealthInsights {
+  metabolic: Insight | null;
+  cardiovascular: Insight | null;
+  hormonal: Insight | null;
+  cognitive: Insight | null;
+  inflammation: Insight | null;
+}
+
+interface UserStats {
+  user_id: number;
+  phenotypic_age: number;
+  age: number;
+  created_date: string;
+}
+
+interface UserPlan {
+  user_id: number;
+  plan_id: number;
+  id: number;
+  created_at: string;
+  updated_at: string;
+  plan_name: string;
+  plan_objective: string;
+  plan_details: string;
+  plan_output: string;
+}
+
+interface TreatmentPlan {
+  title: string;
+  objective: string;
+  details: string;
+  recommendations: string[];
+  lastUpdated?: string;
+}
+
+interface TreatmentPlans {
+  [key: string]: TreatmentPlan;
+  nutrition: TreatmentPlan;
+  exercise: TreatmentPlan;
+  supplementation: TreatmentPlan;
+  medical: TreatmentPlan;
+  accountability: TreatmentPlan;
+}
+
+const defaultInsights = {
+  metabolic: {
+    issue: "Mild insulin resistance detected",
+    recommendation: "focus on glycemic control"
+  },
+  cardiovascular: {
+    issue: "LDL slightly elevated",
+    recommendation: "emphasis on omega-3s and exercise"
+  },
+  hormonal: {
+    issue: "Low testosterone and slightly elevated cortisol levels",
+    recommendation: "need stress management and potential HRT evaluation"
+  },
+  cognitive: {
+    issue: "Some signs of brain fog and memory issues",
+    recommendation: "neuroprotective interventions recommended"
+  },
+  inflammation: {
+    issue: "Slightly high CRP",
+    recommendation: "indicating low-grade chronic inflammation"
+  }
+};
+
+// Update markdown component types
+interface MarkdownComponentProps {
+  children?: ReactNode;
+}
+
+interface MarkdownLinkProps extends MarkdownComponentProps {
+  href?: string;
+}
+
+// Custom component for nutrition plan collapsible sections
+interface NutritionDayProps {
+  content: string;
+}
+
+const NutritionDay: React.FC<NutritionDayProps> = ({ content }) => {
+  // Extract title and content from the details/summary tags
+  const titleMatch = content.match(/<summary>([\s\S]*?)<\/summary>/);
+  const contentMatch = content.match(/<\/summary>([\s\S]*?)<\/details>/);
+  
+  const title = titleMatch ? titleMatch[1].trim() : 'Day';
+  const dayContent = contentMatch ? contentMatch[1].trim() : '';
+  
+  return (
+    <AccordionItem value={title}>
+      <AccordionTrigger className="font-medium">{title}</AccordionTrigger>
+      <AccordionContent>
+        <div className="pt-2 px-1">
+          <ReactMarkdown
+            components={markdownComponents}
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeRaw]}
+          >
+            {dayContent}
+          </ReactMarkdown>
+        </div>
+      </AccordionContent>
+    </AccordionItem>
+  );
+};
+
+// Define markdown components with proper types
+const markdownComponents: Partial<Components> = {
+  p: ({ children }: MarkdownComponentProps) => (
+    <Text size="sm" className="leading-relaxed mt-2 mb-2">{children}</Text>
+  ),
+  ul: ({ children }: MarkdownComponentProps) => (
+    <ul className="list-disc pl-4 space-y-1 mt-2 mb-2">{children}</ul>
+  ),
+  ol: ({ children }: MarkdownComponentProps) => (
+    <ol className="list-decimal pl-4 space-y-1 mt-2 mb-2">{children}</ol>
+  ),
+  li: ({ children }: MarkdownComponentProps) => (
+    <li className="text-sm mb-1">{children}</li>
+  ),
+  strong: ({ children }: MarkdownComponentProps) => (
+    <strong className="font-semibold">{children}</strong>
+  ),
+  em: ({ children }: MarkdownComponentProps) => (
+    <em className="italic">{children}</em>
+  ),
+  a: ({ children, href }: MarkdownLinkProps) => (
+    <a href={href} className="text-accent hover:underline" target="_blank" rel="noopener noreferrer">
+      {children}
+    </a>
+  ),
+  details: ({ children }: MarkdownComponentProps) => (
+    <details className="group border rounded-lg mb-4">
+      {children}
+    </details>
+  ),
+  summary: ({ children }: MarkdownComponentProps) => (
+    <summary className="flex cursor-pointer select-none items-center gap-2 p-4 font-medium hover:bg-accent/5">
+      <svg
+        className="h-4 w-4 shrink-0 transition-transform duration-200 group-open:rotate-90"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M9 5l7 7-7 7"
+        />
+      </svg>
+      <span className="font-medium">{children}</span>
+    </summary>
+  ),
+  h1: ({ children }: MarkdownComponentProps) => (
+    <Heading size="sm" className="mb-2 mt-4">{children}</Heading>
+  ),
+  h2: ({ children }: MarkdownComponentProps) => (
+    <Text size="sm" className="font-semibold mb-2 mt-4">{children}</Text>
+  ),
+  h3: ({ children }: MarkdownComponentProps) => (
+    <Text size="sm" className="font-medium mb-2 mt-4">{children}</Text>
+  ),
+};
+
+export default function DashboardStats() {
+  const [stats, setStats] = useState({
+    phenotypicAge: '-',
+    activePrompts: 0,
+    completionRate: 0
+  });
+  const [insights, setInsights] = useState<HealthInsights>({
+    metabolic: null,
+    cardiovascular: null,
+    hormonal: null,
+    cognitive: null,
+    inflammation: null
+  });
+  const [treatmentPlans, setTreatmentPlans] = useState<TreatmentPlans>({
+    nutrition: {
+      title: "Nutrition Plan",
+      objective: "Optimize metabolic health and body composition through personalized nutrition",
+      details: "A comprehensive nutrition plan focused on whole foods and metabolic flexibility",
+      recommendations: [
+        "<details>\n<summary>Day 1</summary>\n\n## Breakfast: Spinach and Mushroom Omelet with Avocado\n\n### Ingredients (1 serving)\n- 3 eggs (or egg whites if preferred)\n- 1 cup spinach (fresh or frozen)\n- 1/2 cup sliced mushrooms\n- 1/4 avocado, sliced\n- 1 teaspoon olive oil\n- Salt and pepper to taste\n\n### Instructions\n1. Warm a nonstick skillet over medium heat and add olive oil.\n2. Sauté spinach and mushrooms for ~3-4 minutes until tender.\n3. Whisk eggs in a bowl with salt and pepper.\n4. Pour eggs over the vegetables and cook until set (~3 minutes).\n5. Fold the omelet and serve with avocado slices on top.\n\n### Nutritional Info (approx.)\n- Calories: ~350\n- Protein: ~20g\n</details>",
+        "<details>\n<summary>Day 2</summary>\n\n## Coming soon...\n</details>",
+        "<details>\n<summary>Day 3</summary>\n\n## Coming soon...\n</details>",
+        "<details>\n<summary>Day 4</summary>\n\n## Coming soon...\n</details>",
+        "<details>\n<summary>Day 5</summary>\n\n## Coming soon...\n</details>"
+      ]
+    },
+    exercise: {
+      title: "Exercise & Movement Plan",
+      objective: "Build functional strength and cardiovascular fitness while optimizing recovery",
+      details: "A balanced exercise program combining strength, cardio, and recovery protocols",
+      recommendations: [
+        "Strength training 3x weekly focusing on compound movements",
+        "Zone 2 cardio training 2-3x weekly (30-45 minutes per session)",
+        "Daily walking minimum 7,000 steps",
+        "Incorporate mobility work 2x weekly",
+        "Add 1-2 HIIT sessions weekly (10-15 minutes)"
+      ]
+    },
+    supplementation: {
+      title: "Supplementation Plan",
+      objective: "Address nutritional gaps and support optimal biological function",
+      details: "Evidence-based supplementation protocol targeting key health markers",
+      recommendations: [
+        "Omega-3 fish oil: 2g daily with meal",
+        "Vitamin D3: 5,000 IU daily with fat-containing meal",
+        "Magnesium glycinate: 300mg before bed",
+        "Berberine: 500mg with meals, 2x daily",
+        "CoQ10: 200mg daily with fat-containing meal"
+      ]
+    },
+    medical: {
+      title: "Medical Interventions & Advanced Therapies",
+      objective: "Monitor and optimize key biomarkers through medical interventions",
+      details: "Comprehensive medical monitoring and intervention strategy",
+      recommendations: [
+        "Quarterly metabolic panel and hormone testing",
+        "Consider testosterone optimization therapy based on next lab results",
+        "Continuous glucose monitoring for 2-week period",
+        "Sleep study to evaluate potential sleep apnea",
+        "Stress management protocol including HRV training"
+      ]
+    },
+    accountability: {
+      title: "Accountability & Optimization Plan",
+      objective: "Ensure consistent progress through regular monitoring and adjustments",
+      details: "Structured accountability system with regular check-ins and adjustments",
+      recommendations: [
+        "Weekly check-ins via app to monitor adherence",
+        "Monthly biomarker tracking (weight, blood pressure, resting heart rate)",
+        "Quarterly comprehensive lab testing",
+        "Adjust protocol based on subjective feedback and objective metrics",
+        "6-month comprehensive review and protocol adjustment"
+      ]
+    }
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  
+  useEffect(() => {
+    let isMounted = true;
+    
+    async function fetchData() {
+      if (!isMounted) return;
+      
+      setIsLoading(true);
+      try {
+        // Try to fetch stats
+        const token = localStorage.getItem('access_token');
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/stats`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const data: UserStats = await response.json();
+          if (isMounted) {
+            setStats(prev => ({
+              ...prev,
+              phenotypicAge: data.phenotypic_age?.toString() || '-'
+            }));
+          }
+        }
+      } catch (error) {
+        console.log('Error fetching stats');
+        if (isMounted) {
+          setStats(prev => ({
+            ...prev,
+            phenotypicAge: '-'
+          }));
+        }
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    }
+
+    fetchData();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+  
+  useEffect(() => {
+    async function fetchInsights() {
+      try {
+        const token = localStorage.getItem('access_token');
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/insights`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const data: Insight[] = await response.json();
+          
+          // Organize insights by area
+          const organizedInsights: HealthInsights = {
+            metabolic: data.find(i => i.area.toLowerCase() === 'metabolic') || null,
+            cardiovascular: data.find(i => i.area.toLowerCase() === 'cardiovascular') || null,
+            hormonal: data.find(i => i.area.toLowerCase() === 'hormonal') || null,
+            cognitive: data.find(i => i.area.toLowerCase() === 'cognitive') || null,
+            inflammation: data.find(i => i.area.toLowerCase() === 'inflammation') || null
+          };
+          
+          setInsights(organizedInsights);
+        }
+      } catch (error) {
+        console.log('Error fetching insights, using default data');
+      }
+    }
+
+    fetchInsights();
+  }, []);
+  
+  useEffect(() => {
+    async function fetchPlans() {
+      try {
+        const token = localStorage.getItem('access_token');
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/plans`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const data: UserPlan[] = await response.json();
+          console.log('User Plans:', data);
+          
+          // Convert API data to treatment plans format
+          const newPlans: TreatmentPlans = {
+            ...treatmentPlans
+          };
+          
+          data.forEach((plan: UserPlan) => {
+            const planType = plan.plan_name.toLowerCase();
+            if (['nutrition', 'exercise', 'supplementation', 'medical', 'accountability'].includes(planType)) {
+              newPlans[planType as keyof TreatmentPlans] = {
+                title: plan.plan_name,
+                objective: plan.plan_objective,
+                details: plan.plan_details,
+                recommendations: plan.plan_output.split('\n').filter((item: string) => item.trim()),
+                lastUpdated: plan.updated_at
+              };
+            }
+          });
+
+          setTreatmentPlans(newPlans);
+        }
+      } catch (error) {
+        console.log('Error fetching plans, using default data');
+      }
+    }
+
+    fetchPlans();
+  }, []);
+  
+  const generatePDF = (plan: TreatmentPlan) => {
+    const doc = new jsPDF();
+    
+    // Add title
+    doc.setFontSize(20);
+    doc.text(plan.title, 20, 20);
+    
+    // Add objective
+    doc.setFontSize(14);
+    doc.text('Objective:', 20, 35);
+    doc.setFontSize(12);
+    doc.text(plan.objective, 20, 45, { maxWidth: 170 });
+    
+    // Add details
+    doc.setFontSize(14);
+    doc.text('Details:', 20, 65);
+    doc.setFontSize(12);
+    doc.text(plan.details, 20, 75, { maxWidth: 170 });
+    
+    // Add recommendations
+    doc.setFontSize(14);
+    doc.text('Recommendations:', 20, 95);
+    doc.setFontSize(12);
+    
+    let yPosition = 105;
+    plan.recommendations.forEach((rec, index) => {
+      // Add bullet point and recommendation
+      doc.text(`• ${rec}`, 20, yPosition, { maxWidth: 170 });
+      yPosition += Math.ceil(rec.length / 50) * 10; // Approximate line height calculation
+    });
+    
+    // Add last updated date if available
+    if (plan.lastUpdated) {
+      doc.setFontSize(10);
+      doc.text(`Last updated: ${new Date(plan.lastUpdated).toLocaleDateString()}`, 20, yPosition + 10);
+    }
+    
+    // Save the PDF
+    doc.save(`${plan.title.toLowerCase().replace(/\s+/g, '-')}-plan.pdf`);
+  };
+  
+  if (isLoading) return <div>Loading stats...</div>;
+  
+  return (
+    <>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-sm font-medium">Phenotypic Age</CardTitle>
+          <Users className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{stats.phenotypicAge}</div>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-sm font-medium">Active Prompts</CardTitle>
+          <BarChart className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{stats.activePrompts}</div>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
+          <Activity className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{stats.completionRate}%</div>
+        </CardContent>
+      </Card>
+      
+      {/* Health Insights Section */}
+      <Card className="col-span-3 mt-6">
+        <CardHeader>
+          <CardTitle className="text-xl">Personalized Healthspan Optimization Plan</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div>
+            <Heading size="sm" className="mb-2">Key Insights</Heading>
+            <ul className="space-y-3">
+              <li className="flex items-start gap-2">
+                <Zap className="h-5 w-5 text-accent mt-0.5 flex-shrink-0" />
+                <div>
+                  <Text size="sm" className="font-semibold">Metabolic Health:</Text>
+                  <Text size="sm">
+                    {insights.metabolic ? 
+                      `${insights.metabolic.issue}; ${insights.metabolic.recommendation}` :
+                      `${defaultInsights.metabolic.issue}; ${defaultInsights.metabolic.recommendation}`}
+                  </Text>
+                </div>
+              </li>
+              
+              <li className="flex items-start gap-2">
+                <Heart className="h-5 w-5 text-accent mt-0.5 flex-shrink-0" />
+                <div>
+                  <Text size="sm" className="font-semibold">Cardiovascular Health:</Text>
+                  <Text size="sm">
+                    {insights.cardiovascular ? 
+                      `${insights.cardiovascular.issue}; ${insights.cardiovascular.recommendation}` :
+                      `${defaultInsights.cardiovascular.issue}; ${defaultInsights.cardiovascular.recommendation}`}
+                  </Text>
+                </div>
+              </li>
+              
+              <li className="flex items-start gap-2">
+                <Activity className="h-5 w-5 text-accent mt-0.5 flex-shrink-0" />
+                <div>
+                  <Text size="sm" className="font-semibold">Hormonal Balance:</Text>
+                  <Text size="sm">
+                    {insights.hormonal ? 
+                      `${insights.hormonal.issue}; ${insights.hormonal.recommendation}` :
+                      `${defaultInsights.hormonal.issue}; ${defaultInsights.hormonal.recommendation}`}
+                  </Text>
+                </div>
+              </li>
+              
+              <li className="flex items-start gap-2">
+                <Brain className="h-5 w-5 text-accent mt-0.5 flex-shrink-0" />
+                <div>
+                  <Text size="sm" className="font-semibold">Cognitive Function:</Text>
+                  <Text size="sm">
+                    {insights.cognitive ? 
+                      `${insights.cognitive.issue}; ${insights.cognitive.recommendation}` :
+                      `${defaultInsights.cognitive.issue}; ${defaultInsights.cognitive.recommendation}`}
+                  </Text>
+                </div>
+              </li>
+              
+              <li className="flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 text-accent mt-0.5 flex-shrink-0" />
+                <div>
+                  <Text size="sm" className="font-semibold">Inflammation Markers:</Text>
+                  <Text size="sm">
+                    {insights.inflammation ? 
+                      `${insights.inflammation.issue}; ${insights.inflammation.recommendation}` :
+                      `${defaultInsights.inflammation.issue}; ${defaultInsights.inflammation.recommendation}`}
+                  </Text>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Treatment Plans Section */}
+      <Card className="col-span-3 mt-6">
+        <CardHeader>
+          <CardTitle className="text-xl">Treatment & Optimization Plans</CardTitle>
+          <Text size="sm">Personalized recommendations based on your health data</Text>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="nutrition" className="w-full">
+            <TabsList className="grid w-full grid-cols-5 mb-6 bg-background">
+              <TabsTrigger value="nutrition" className="text-foreground data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">Nutrition</TabsTrigger>
+              <TabsTrigger value="exercise" className="text-foreground data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">Exercise</TabsTrigger>
+              <TabsTrigger value="supplementation" className="text-foreground data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">Supplements</TabsTrigger>
+              <TabsTrigger value="medical" className="text-foreground data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">Medical</TabsTrigger>
+              <TabsTrigger value="accountability" className="text-foreground data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">Accountability</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="nutrition" className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Utensils className="h-6 w-6 text-accent" />
+                <Heading size="sm">{treatmentPlans.nutrition.title} Plan</Heading>
+              </div>
+              <div className="space-y-2">
+                <Text size="sm" className="font-semibold">Objective</Text>
+                <Text size="sm">{treatmentPlans.nutrition.objective}</Text>
+                <Text size="sm" className="font-semibold mt-4">Details</Text>
+                <Text size="sm">{treatmentPlans.nutrition.details}</Text>
+                <Text size="sm" className="font-semibold mt-4">Recommendations</Text>
+                <div className="mt-4">
+                  <Accordion type="single" collapsible className="w-full">
+                    {treatmentPlans.nutrition.recommendations.map((rec, index) => (
+                      <NutritionDay key={index} content={rec} />
+                    ))}
+                  </Accordion>
+                </div>
+                {treatmentPlans.nutrition.lastUpdated && (
+                  <Text size="sm" className="text-muted-foreground mt-4">
+                    Last updated: {new Date(treatmentPlans.nutrition.lastUpdated).toLocaleDateString()}
+                  </Text>
+                )}
+              </div>
+              <div className="pt-4">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => generatePDF(treatmentPlans.nutrition)}
+                >
+                  Download Nutrition Plan PDF
+                </Button>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="exercise" className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Dumbbell className="h-6 w-6 text-accent" />
+                <Heading size="sm">{treatmentPlans.exercise.title}</Heading>
+              </div>
+              <div className="space-y-2">
+                <Text size="sm" className="font-semibold">Objective:</Text>
+                <Text size="sm">{treatmentPlans.exercise.objective}</Text>
+                <Text size="sm" className="font-semibold mt-4">Recommendations</Text>
+                <ul className="space-y-2 pl-6">
+                  {treatmentPlans.exercise.recommendations.map((rec, index) => (
+                    <li key={index} className="list-none">
+                      <div 
+                        className="prose prose-sm dark:prose-invert max-w-none" 
+                        dangerouslySetInnerHTML={{ __html: rec }}
+                      />
+                    </li>
+                  ))}
+                </ul>
+                {treatmentPlans.exercise.lastUpdated && (
+                  <Text size="sm" className="text-muted-foreground mt-4">
+                    Last updated: {new Date(treatmentPlans.exercise.lastUpdated).toLocaleDateString()}
+                  </Text>
+                )}
+              </div>
+              <div className="pt-4">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => generatePDF(treatmentPlans.exercise)}
+                >
+                  Download Exercise Plan PDF
+                </Button>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="supplementation" className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Pill className="h-6 w-6 text-accent" />
+                <Heading size="sm">{treatmentPlans.supplementation.title}</Heading>
+              </div>
+              <div className="space-y-2">
+                <Text size="sm" className="font-semibold">Objective:</Text>
+                <Text size="sm">{treatmentPlans.supplementation.objective}</Text>
+                <Text size="sm" className="font-semibold mt-4">Details:</Text>
+                <Text size="sm">{treatmentPlans.supplementation.details}</Text>
+                <Text size="sm" className="font-semibold mt-4">Recommendations:</Text>
+                <ul className="space-y-2 pl-6">
+                  {treatmentPlans.supplementation.recommendations.map((rec, index) => (
+                    <li key={index} className="list-none">
+                      <div 
+                        className="prose prose-sm dark:prose-invert max-w-none" 
+                        dangerouslySetInnerHTML={{ __html: rec }}
+                      />
+                    </li>
+                  ))}
+                </ul>
+                {treatmentPlans.supplementation.lastUpdated && (
+                  <Text size="sm" className="text-muted-foreground mt-4">
+                    Last updated: {new Date(treatmentPlans.supplementation.lastUpdated).toLocaleDateString()}
+                  </Text>
+                )}
+              </div>
+              <div className="pt-4">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => generatePDF(treatmentPlans.supplementation)}
+                >
+                  Download Supplement Plan PDF
+                </Button>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="medical" className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Stethoscope className="h-6 w-6 text-accent" />
+                <Heading size="sm">{treatmentPlans.medical.title}</Heading>
+              </div>
+              <div className="space-y-2">
+                <Text size="sm" className="font-semibold">Objective:</Text>
+                <Text size="sm">{treatmentPlans.medical.objective}</Text>
+                <Text size="sm" className="font-semibold mt-4">Details:</Text>
+                <Text size="sm">{treatmentPlans.medical.details}</Text>
+                <Text size="sm" className="font-semibold mt-4">Recommendations:</Text>
+                <ul className="space-y-2 pl-6">
+                  {treatmentPlans.medical.recommendations.map((rec, index) => (
+                    <li key={index} className="list-none">
+                      <div 
+                        className="prose prose-sm dark:prose-invert max-w-none" 
+                        dangerouslySetInnerHTML={{ __html: rec }}
+                      />
+                    </li>
+                  ))}
+                </ul>
+                {treatmentPlans.medical.lastUpdated && (
+                  <Text size="sm" className="text-muted-foreground mt-4">
+                    Last updated: {new Date(treatmentPlans.medical.lastUpdated).toLocaleDateString()}
+                  </Text>
+                )}
+              </div>
+              <div className="pt-4">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => generatePDF(treatmentPlans.medical)}
+                >
+                  Download Medical Plan PDF
+                </Button>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="accountability" className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Target className="h-6 w-6 text-accent" />
+                <Heading size="sm">{treatmentPlans.accountability.title}</Heading>
+              </div>
+              <div className="space-y-2">
+                <Text size="sm" className="font-semib

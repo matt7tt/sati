@@ -11,7 +11,7 @@ export default function PromptList() {
     async function fetchPrompts() {
       setIsLoading(true);
       try {
-        const response = await fetch('/api/prompts');
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/prompts`);
         const data = await response.json();
         setPrompts(data);
       } catch (error) {

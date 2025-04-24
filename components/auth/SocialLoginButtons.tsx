@@ -11,13 +11,8 @@ export default function SocialLoginButtons() {
     router.push('/api/auth/google');
   };
   
-  const handleGithubLogin = async () => {
-    // Logic for GitHub login
-    router.push('/api/auth/github');
-  };
-  
   return (
-    <div className="mt-6 grid grid-cols-2 gap-3">
+    <div className="mt-6">
       <Button 
         variant="outline" 
         onClick={handleGoogleLogin}
@@ -27,17 +22,6 @@ export default function SocialLoginButtons() {
           {/* Google icon SVG */}
         </svg>
         Google
-      </Button>
-      
-      <Button 
-        variant="outline" 
-        onClick={handleGithubLogin}
-        className="w-full"
-      >
-        <svg className="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
-          {/* GitHub icon SVG */}
-        </svg>
-        GitHub
       </Button>
     </div>
   );

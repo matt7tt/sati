@@ -5,7 +5,7 @@ export function useDashboardStats() {
   return useQuery<DashboardStats>({
     queryKey: ['dashboardStats'],
     queryFn: async () => {
-      const response = await fetch('/api/dashboard/stats');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/stats`);
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }

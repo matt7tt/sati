@@ -18,7 +18,7 @@ const fraunces = Fraunces({
 })
 
 export const metadata: Metadata = {
-  title: "FutureProof Health - Personalized Healthspan Optimization",
+  title: "Zeal.health - Personalized Healthspan Optimization",
   description: "AI-powered personalized health plans for busy adults. Improve metabolic health, balance hormones, protect your heart, boost brainpower, and fight inflammation.",
 }
 

@@ -5,7 +5,7 @@ export default function NavBar() {
   return (
     <nav className="relative flex items-center justify-between px-6 py-4 bg-background">
       <Link href="/" className="text-2xl font-medium text-text">
-        FutureProof Health
+        Zeal.health
       </Link>
       <div className="flex items-center gap-8">
         <Link href="#how-it-works" className="text-sm text-text hover:text-accent transition-colors">

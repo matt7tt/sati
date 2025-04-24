@@ -11,9 +11,9 @@ export default function AuthCard({ title, subtitle, children }: AuthCardProps) {
   return (
     <div className="w-full max-w-md bg-white shadow-md rounded-lg overflow-hidden">
       <div className="p-6">
-        <Link href="/" className="block text-center mb-6">
-          <span className="text-xl font-bold text-primary">HealthTrack</span>
-        </Link>
+        <div className="flex items-center justify-center mb-6">
+          <span className="text-xl font-bold text-primary">Zeal.health</span>
+        </div>
         
         <h2 className="text-2xl font-bold text-center text-gray-900">{title}</h2>
         {subtitle && (

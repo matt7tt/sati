@@ -7,10 +7,11 @@ import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
 import { jsPDF } from 'jspdf';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { BarChart, Users, ArrowUpRight, Activity, Heart, Brain, Zap, AlertCircle, Utensils, Dumbbell, Pill, Stethoscope, Target, CheckCircle, Clock } from 'lucide-react';
+import { BarChart, Users, ArrowUpRight, Activity, Heart, Brain, Zap, AlertCircle, Utensils, Dumbbell, Pill, Stethoscope, Target, CheckCircle, Clock, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { Heading, Text } from '@/components/ui/typography';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface Insight {
   id: number;
@@ -73,6 +74,14 @@ interface Action {
   status: string;
   priority: string;
   plan_name?: string;
+}
+
+interface ActionComment {
+  id: number;
+  user_action_id: number;
+  action_comment: string;
+  created_at: string;
+  updated_at: string;
 }
 
 const defaultInsights = {
@@ -470,6 +479,7 @@ export default function DashboardStats() {
   const [isLoading, setIsLoading] = useState(true);
   const [showAllActions, setShowAllActions] = useState(false);
   const [allInsights, setAllInsights] = useState<Insight[]>([]);
+  const [actionComments, setActionComments] = useState<{[key: number]: ActionComment[]}>({});
   
   useEffect(() => {
     let isMounted = true;
@@ -653,6 +663,76 @@ export default function DashboardStats() {
     fetchPlans();
   }, [activePlanTab]);
   
+  const fetchActionComments = async (actionId: number) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/action-comments/${actionId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data: ActionComment[] = await response.json();
+        setActionComments(prev => ({
+          ...prev,
+          [actionId]: data
+        }));
+      }
+    } catch (error) {
+      console.log('Error fetching action comments');
+    }
+  };
+  
+  const createActionComment = async (actionId: number, comment: string) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/auth/action-comments/${actionId}?comment=${encodeURIComponent(comment)}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data: ActionComment = await response.json();
+        setActionComments(prev => ({
+          ...prev,
+          [actionId]: [data, ...(prev[actionId] || [])]
+        }));
+      }
+    } catch (error) {
+      console.log('Error creating action comment');
+    }
+  };
+  
+  const handleThumbsUp = (actionId: number) => {
+    createActionComment(actionId, "Yes");
+  };
+  
+  const handleThumbsDown = (actionId: number) => {
+    createActionComment(actionId, "No");
+  };
+  
+  const getPlanTagColor = (planName: string) => {
+    switch (planName.toLowerCase()) {
+      case 'nutrition plan':
+        return 'text-emerald-700 bg-emerald-50 border-emerald-200';
+      case 'exercise & movement plan':
+        return 'text-blue-700 bg-blue-50 border-blue-200';
+      case 'supplementation plan':
+        return 'text-purple-700 bg-purple-50 border-purple-200';
+      case 'medical interventions & advanced therapies':
+        return 'text-red-700 bg-red-50 border-red-200';
+      case 'accountability & optimization plan':
+        return 'text-amber-700 bg-amber-50 border-amber-200';
+      default:
+        return 'text-gray-700 bg-gray-50 border-gray-200';
+    }
+  };
+
   useEffect(() => {
     async function fetchActions() {
       try {
@@ -667,7 +747,7 @@ export default function DashboardStats() {
           const data: Action[] = await response.json();
           
           // Get the plan names for each action
-          const actionsWithPlanNames = data.map(action => {
+          const actionsWithPlanNames = data.map((action): Action => {
             // Default plan name
             let planName = "General";
             
@@ -685,6 +765,11 @@ export default function DashboardStats() {
           });
           
           setActions(actionsWithPlanNames);
+          
+          // After setting actions, fetch comments for each action
+          actionsWithPlanNames.forEach(action => {
+            fetchActionComments(action.id);
+          });
         }
       } catch (error) {
         console.log('Error fetching actions');
@@ -693,6 +778,23 @@ export default function DashboardStats() {
 
     fetchActions();
   }, [treatmentPlans]);
+  
+  // Fetch action comments for all actions when actions are loaded
+  useEffect(() => {
+    const fetchMissingComments = () => {
+      if (actions.length > 0) {
+        actions.forEach(action => {
+          // Only fetch if we don't already have comments for this action
+          if (!actionComments[action.id]) {
+            fetchActionComments(action.id);
+          }
+        });
+      }
+    };
+    
+    fetchMissingComments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actions]); // Only depend on actions to prevent infinite loops
   
   const generatePDF = (plan: TreatmentPlan) => {
     const doc = new jsPDF();
@@ -819,23 +921,6 @@ export default function DashboardStats() {
     }
   };
   
-  const getPlanTagColor = (planName: string) => {
-    switch (planName.toLowerCase()) {
-      case 'nutrition plan':
-        return 'text-emerald-700 bg-emerald-50 border-emerald-200';
-      case 'exercise & movement plan':
-        return 'text-blue-700 bg-blue-50 border-blue-200';
-      case 'supplementation plan':
-        return 'text-purple-700 bg-purple-50 border-purple-200';
-      case 'medical interventions & advanced therapies':
-        return 'text-red-700 bg-red-50 border-red-200';
-      case 'accountability & optimization plan':
-        return 'text-amber-700 bg-amber-50 border-amber-200';
-      default:
-        return 'text-gray-700 bg-gray-50 border-gray-200';
-    }
-  };
-  
   // Sort actions to show completed items at the bottom
   const sortActions = (actions: Action[]) => {
     return [...actions].sort((a, b) => {
@@ -857,7 +942,99 @@ export default function DashboardStats() {
   if (isLoading) return <div>Loading stats...</div>;
   
   return (
-    <>
+    <div className="max-w-[1200px] mx-auto">
+      {/* Combined Longevity Profile Card - Moved to the top */}
+      <Card className="col-span-3 mb-4">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base font-semibold">Your Longevity Profile</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Left Side - Score and Progress */}
+            <div>
+              <div className="flex items-end justify-between mb-2">
+                <div>
+                  <Text className="text-sm font-medium text-muted-foreground">Phenotypic Age</Text>
+                  <div className="text-4xl font-bold mt-1">
+                    {stats.phenotypicAge !== '-' ? stats.phenotypicAge : '38'}
+                  </div>
+                </div>
+                <div className="px-2 py-1 rounded-md bg-score-positive/10 text-score-positive text-xs font-medium">
+                  +3 pts this week
+                </div>
+              </div>
+              
+              <Text size="xs" className="text-muted-foreground mt-2 mb-4">
+                Biological age based on biomarkers
+              </Text>
+              
+              <div className="w-full h-2 bg-score-background rounded-full mb-2">
+                <div className="h-2 bg-score-progress rounded-full" style={{ width: `${(parseInt(stats.phenotypicAge !== '-' ? stats.phenotypicAge : '38', 10) / 100) * 100}%` }} />
+              </div>
+              
+              <div className="flex justify-between text-xs text-muted-foreground mb-4">
+                <span>0</span>
+                <span>50</span>
+                <span>100</span>
+              </div>
+              
+              {/* Health Focus Areas */}
+              <div className="mt-6">
+                <Text className="text-sm font-medium mb-2">Health Focus Areas</Text>
+                <div className="flex flex-wrap gap-2">
+                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-health-cardiovascular/10 text-health-cardiovascular border border-health-cardiovascular/20">
+                    ❤️ Cardiovascular Health
+                  </div>
+                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-health-brain/10 text-health-brain border border-health-brain/20">
+                    🧠 Brain Health
+                  </div>
+                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-health-metabolic/10 text-health-metabolic border border-health-metabolic/20">
+                    ⚡ Metabolic Health
+                  </div>
+                </div>
+                <Text size="xs" className="text-muted-foreground mt-2">
+                  Your score is based on your biometrics, habits, and adherence to recommendations.
+                </Text>
+              </div>
+            </div>
+            
+            {/* Right Side - Additional Stats */}
+            <div className="grid grid-cols-1 gap-4">
+              <div className="flex justify-between border-b pb-3">
+                <div>
+                  <Text className="text-sm font-medium text-muted-foreground">VO₂ Max</Text>
+                  <div className="text-xl font-semibold mt-1">
+                    {stats.vo2Max !== '-' ? stats.vo2Max : '42.5'} <span className="text-sm font-normal">ml/kg/min</span>
+                  </div>
+                  <Text size="xs" className="text-muted-foreground">Cardiorespiratory fitness</Text>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                  <Heart className="h-5 w-5 text-blue-600" />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 border-b pb-3">
+                <div>
+                  <Text className="text-sm font-medium text-muted-foreground">Body Fat</Text>
+                  <div className="text-xl font-semibold mt-1">
+                    {stats.bodyFat !== '-' ? stats.bodyFat : '18.2'}%
+                  </div>
+                </div>
+                <div>
+                  <Text className="text-sm font-medium text-muted-foreground">Muscle Mass</Text>
+                  <div className="text-xl font-semibold mt-1">
+                    {stats.muscleMass !== '-' ? stats.muscleMass : '32.6'} kg
+                  </div>
+                </div>
+                <Text size="xs" className="text-muted-foreground col-span-2 -mt-2">Metabolic health indicators</Text>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Two Column Layout for Actions and Insights */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {/* Actions Section */}
@@ -872,49 +1049,101 @@ export default function DashboardStats() {
                   const isCompleted = action.status.toLowerCase() === 'completed';
                   const actionIcon = getActionIcon(action.action);
                   
+                  // Find if user has already commented
+                  const actionCommentsList = actionComments[action.id] || [];
+                  const latestComment = actionCommentsList.length > 0 ? actionCommentsList[0] : null;
+                  const userComment = latestComment ? latestComment.action_comment : null;
+                  const hasThumbsUp = userComment === "Yes";
+                  const hasThumbsDown = userComment === "No";
+                  
                   return (
                     <div 
                       key={action.id} 
-                      className={`flex items-start justify-between p-4 border rounded-xl shadow-sm ${isCompleted ? 'opacity-70 bg-gray-50' : 'bg-white'}`}
+                      className={`relative flex flex-col p-4 border rounded-xl shadow-sm ${isCompleted ? 'opacity-70 bg-gray-50' : 'bg-white'}`}
                     >
-                      <div className="flex items-start gap-3">
-                        <div>
-                          <div className={`h-10 w-10 rounded-full ${actionIcon.bgClass} flex items-center justify-center ${actionIcon.textClass}`}>
-                            {actionIcon.icon}
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-3">
+                          <div>
+                            <div className={`h-10 w-10 rounded-full ${actionIcon.bgClass} flex items-center justify-center ${actionIcon.textClass}`}>
+                              {actionIcon.icon}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <Text className={`text-sm font-semibold ${isCompleted ? 'text-gray-500 line-through' : ''}`}>
+                                {action.action}
+                              </Text>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <Text size="xs" className={`text-muted-foreground ${isCompleted ? 'text-gray-400' : ''}`}>
+                                Updated: {new Date(action.updated_at).toLocaleDateString()}
+                              </Text>
+                            </div>
                           </div>
                         </div>
                         <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <Text className={`text-sm font-semibold ${isCompleted ? 'text-gray-500 line-through' : ''}`}>
-                              {action.action}
-                            </Text>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <Text size="xs" className={`text-muted-foreground ${isCompleted ? 'text-gray-400' : ''}`}>
-                              Updated: {new Date(action.updated_at).toLocaleDateString()}
-                            </Text>
-                          </div>
+                          {isCompleted ? (
+                            <Button 
+                              variant="outline" 
+                              size="icon" 
+                              disabled
+                              className="h-8 w-8 rounded-full border-green-200 bg-green-50"
+                            >
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                            </Button>
+                          ) : (
+                            <Button 
+                              variant="outline" 
+                              size="icon" 
+                              onClick={() => markActionComplete(action.id)}
+                              className="h-8 w-8 rounded-full hover:bg-green-50 hover:border-green-200"
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </div>
-                      {isCompleted ? (
-                        <Button 
-                          variant="outline" 
-                          size="icon" 
-                          disabled
-                          className="h-8 w-8 rounded-full border-green-200 bg-green-50"
-                        >
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        </Button>
-                      ) : (
-                        <Button 
-                          variant="outline" 
-                          size="icon" 
-                          onClick={() => markActionComplete(action.id)}
-                          className="h-8 w-8 rounded-full hover:bg-green-50 hover:border-green-200"
-                        >
-                          <CheckCircle className="h-4 w-4" />
-                        </Button>
-                      )}
+                      
+                      {/* Thumbs feedback section positioned at the bottom right */}
+                      <div className="flex items-center justify-end gap-2 mt-4">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => handleThumbsUp(action.id)}
+                                className={`h-6 w-6 p-0 ${hasThumbsUp ? 'text-green-500' : 'text-gray-400 hover:text-green-500'}`}
+                                disabled={isCompleted}
+                              >
+                                <ThumbsUp className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Yes, good idea!</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => handleThumbsDown(action.id)}
+                                className={`h-6 w-6 p-0 ${hasThumbsDown ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
+                                disabled={isCompleted}
+                              >
+                                <ThumbsDown className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>No, not for me.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
                     </div>
                   );
                 })}
@@ -1091,110 +1320,6 @@ export default function DashboardStats() {
                 ) : null;
               })()
             )}
-          </CardContent>
-        </Card>
-      </div>
-      
-      {/* Score Section */}
-      <Card className="col-span-3 mb-6">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base font-semibold">Your Longevity Score</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-end justify-between mb-2">
-            <div className="text-4xl font-bold">
-              {stats.phenotypicAge !== '-' ? stats.phenotypicAge : '78'}
-            </div>
-            <div className="px-2 py-1 rounded-md bg-score-positive/10 text-score-positive text-xs font-medium">
-              +3 pts this week
-            </div>
-          </div>
-          
-          <div className="w-full h-2 bg-score-background rounded-full mt-4 mb-2">
-            <div className="h-2 bg-score-progress rounded-full" style={{ width: `${(parseInt(stats.phenotypicAge !== '-' ? stats.phenotypicAge : '78', 10) / 100) * 100}%` }} />
-          </div>
-          
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>0</span>
-            <span>50</span>
-            <span>100</span>
-          </div>
-        </CardContent>
-      </Card>
-      
-      {/* Health Focus Area Section */}
-      <Card className="col-span-3 mb-6">
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-semibold">Your Health Focus Areas</CardTitle>
-            <Button variant="ghost" size="sm" className="h-8 px-2 text-xs">
-              Edit
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            <div className="inline-flex items-center px-3 py-1 rounded-full bg-health-cardiovascular/10 text-health-cardiovascular border border-health-cardiovascular/20">
-              ❤️ Cardiovascular Health
-            </div>
-            <div className="inline-flex items-center px-3 py-1 rounded-full bg-health-brain/10 text-health-brain border border-health-brain/20">
-              🧠 Brain Health
-            </div>
-            <div className="inline-flex items-center px-3 py-1 rounded-full bg-health-metabolic/10 text-health-metabolic border border-health-metabolic/20">
-              ⚡ Metabolic Health
-            </div>
-          </div>
-          <Text size="xs" className="text-muted-foreground mt-4">
-            Your score is based on your biometrics, habits, and adherence to recommendations.
-          </Text>
-        </CardContent>
-      </Card>
-      
-      {/* Stat Cards - in a grid */}
-      <div className="col-span-3 grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card className="bg-white shadow-sm border">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Phenotypic Age</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.phenotypicAge !== '-' ? stats.phenotypicAge : '38'}
-            </div>
-            <Text size="xs" className="text-muted-foreground mt-1">Biological age based on biomarkers</Text>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-white shadow-sm border">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">VO₂ Max</CardTitle>
-            <Heart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.vo2Max !== '-' ? stats.vo2Max : '42.5'} <span className="text-sm font-normal">ml/kg/min</span>
-            </div>
-            <Text size="xs" className="text-muted-foreground mt-1">Cardiorespiratory fitness level</Text>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-white shadow-sm border">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Body Composition</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="flex justify-between">
-              <div>
-                <Text size="xs">Body Fat</Text>
-                <div className="text-lg font-bold">{stats.bodyFat !== '-' ? stats.bodyFat : '18.2'}%</div>
-              </div>
-              <div className="border-l pl-4">
-                <Text size="xs">Muscle Mass</Text>
-                <div className="text-lg font-bold">{stats.muscleMass !== '-' ? stats.muscleMass : '32.6'} kg</div>
-              </div>
-            </div>
-            <Text size="xs" className="text-muted-foreground mt-1">Metabolic health indicators</Text>
           </CardContent>
         </Card>
       </div>
@@ -1433,6 +1558,6 @@ export default function DashboardStats() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

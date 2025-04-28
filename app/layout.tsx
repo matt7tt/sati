@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { Inter, Fraunces } from "next/font/google"
+import { Inter } from "next/font/google"
 import "./globals.css"
 import { Toaster } from "@/components/ui/toaster"
 import type React from "react" // Import React
@@ -11,14 +11,8 @@ const inter = Inter({
   display: "swap",
 })
 
-const fraunces = Fraunces({ 
-  subsets: ["latin"],
-  variable: "--font-fraunces",
-  display: "swap",
-})
-
 export const metadata: Metadata = {
-  title: "Zeal.health - Personalized Healthspan Optimization",
+  title: "KWILT - Personalized Healthspan Optimization",
   description: "AI-powered personalized health plans for busy adults. Improve metabolic health, balance hormones, protect your heart, boost brainpower, and fight inflammation.",
 }
 
@@ -28,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${fraunces.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable}`} suppressHydrationWarning>
       <body className="bg-background">
         <ThemeProvider defaultTheme="light">
           {children}

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Denim Ink VF Font Demo</title>
+  <link rel="stylesheet" href="./fonts.css">
+  <style>
+    body {
+      font-family: 'Denim Ink VF', sans-serif;
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    
+    h1 {
+      font-weight: 900;
+      font-size: 3rem;
+      margin-bottom: 2rem;
+    }
+    
+    .weight-demo {
+      margin-bottom: 2rem;
+    }
+    
+    .weight-row {
+      display: grid;
+      grid-template-columns: 100px 1fr;
+      margin-bottom: 0.5rem;
+      align-items: center;
+    }
+    
+    .weight-label {
+      font-size: 0.8rem;
+      color: #666;
+    }
+    
+    .interactive {
+      margin-top: 3rem;
+      padding: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    
+    .controls {
+      margin-bottom: 1rem;
+    }
+    
+    label {
+      margin-right: 1rem;
+    }
+    
+    .sample-text {
+      font-size: 2rem;
+      line-height: 1.3;
+    }
+  </style>
+</head>
+<body>
+  <h1>Denim Ink VF</h1>
+  
+  <div class="weight-demo">
+    <h2>Font Weights</h2>
+    
+    <div class="weight-row">
+      <div class="weight-label">100</div>
+      <div style="font-weight: 100;">The quick brown fox jumps over the lazy dog</div>
+    </div>
+    
+    <div class="weight-row">
+      <div class="weight-label">200</div>
+      <div style="font-weight: 200;">The quick brown fox jumps over the lazy dog</div>
+    </div>
+    
+    <div class="weight-row">
+      <div class="weight-label">300</div>
+      <div style="font-weight: 300;">The quick brown fox jumps over the lazy dog</div>
+    </div>
+    
+    <div class="weight-row">
+      <div class="weight-label">400</div>
+      <div style="font-weight: 400;">The quick brown fox jumps over the lazy dog</div>
+    </div>
+    
+    <div class="weight-row">
+      <div class="weight-label">500</div>
+      <div style="font-weight: 500;">The quick brown fox jumps over the lazy dog</div>
+    </div>
+    
+    <div class="weight-row">
+      <div class="weight-label">600</div>
+      <div style="font-weight: 600;">The quick brown fox jumps over the lazy dog</div>
+    </div>
+    
+    <div class="weight-row">
+      <div class="weight-label">700</div>
+      <div style="font-weight: 700;">The quick brown fox jumps over the lazy dog</div>
+    </div>
+    
+    <div class="weight-row">
+      <div class="weight-label">800</div>
+      <div style="font-weight: 800;">The quick brown fox jumps over the lazy dog</div>
+    </div>
+    
+    <div class="weight-row">
+      <div class="weight-label">900</div>
+      <div style="font-weight: 900;">The quick brown fox jumps over the lazy dog</div>
+    </div>
+  </div>
+  
+  <div class="interactive">
+    <h2>Interactive Demo</h2>
+    
+    <div class="controls">
+      <label>
+        Font Weight:
+        <input type="range" id="weightSlider" min="100" max="900" step="1" value="400">
+        <span id="weightValue">400</span>
+      </label>
+      
+      <label>
+        Font Size:
+        <input type="range" id="sizeSlider" min="12" max="72" value="32">
+        <span id="sizeValue">32px</span>
+      </label>
+    </div>
+    
+    <div id="sampleText" class="sample-text">
+      Denim Ink Variable Font
+    </div>
+  </div>
+  
+  <script>
+    const weightSlider = document.getElementById('weightSlider');
+    const weightValue = document.getElementById('weightValue');
+    const sizeSlider = document.getElementById('sizeSlider');
+    const sizeValue = document.getElementById('sizeValue');
+    const sampleText = document.getElementById('sampleText');
+    
+    weightSlider.addEventListener('input', function() {
+      const weight = this.value;
+      weightValue.textContent = weight;
+      sampleText.style.fontWeight = weight;
+    });
+    
+    sizeSlider.addEventListener('input', function() {
+      const size = this.value;
+      sizeValue.textContent = size + 'px';
+      sampleText.style.fontSize = size + 'px';
+    });
+  </script>
+</body>
+</html> 

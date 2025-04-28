@@ -2,116 +2,137 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+/* Denim Ink VF will be added later when available */
+
+/* Commented out until the font is available
+@font-face {
+  font-family: 'Denim Ink VF';
+  src: url('/fonts/DenimInkVF.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+*/
 
 :root {
   /* Color palette variables */
   --background: 0 0% 100%;
-  --foreground: 222 47% 11%;
+  --foreground: 34 67% 15%; /* BARK color as the main text color */
   --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
+  --card-foreground: 34 67% 15%; /* BARK */
   --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
-  --primary: 221 83% 53%;
+  --popover-foreground: 34 67% 15%; /* BARK */
+  --primary: 0 94% 70%; /* KWILI RED */
   --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96.1%;
-  --secondary-foreground: 222 47% 11%;
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215 16% 47%;
-  --accent: 221 83% 53%;
-  --accent-foreground: 210 40% 98%;
-  --destructive: 0 84.2% 60.2%;
+  --secondary: 24 57% 87%; /* HONEY */
+  --secondary-foreground: 34 67% 15%; /* BARK */
+  --muted: 33 9% 79%; /* FOG */
+  --muted-foreground: 34 67% 15%; /* BARK with opacity */
+  --accent: 9 100% 84%; /* ROSE */
+  --accent-foreground: 34 67% 15%; /* BARK */
+  --destructive: 0 94% 70%; /* KWILI RED */
   --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 221 83% 53%;
+  --border: 33 9% 79%; /* FOG */
+  --input: 33 9% 79%; /* FOG */
+  --ring: 0 94% 70%; /* KWILI RED */
+  
+  /* Brand Color Palette */
+  --mist: 48 38% 91%; /* RGB 237 237 224, CMYK 6 0 6 7, HEX #EDEDE0 */
+  --fog: 33 9% 79%; /* RGB 208 204 197, CMYK 18 15 22 0, HEX #D0CCC5 */
+  --bark: 34 67% 15%; /* RGB 60 45 15, CMYK 20 59 89 63, HEX #3C2D0F */
+  --kwili-red: 0 94% 70%; /* RGB 252 107 107, CMYK 0 67 54 0, HEX #FC6B6B */
+  --sky: 195 50% 92%; /* RGB 217 235 240, CMYK 14 0 4 0, HEX #D9EBF0 */
+  --rose: 9 100% 84%; /* RGB 255 219 227, CMYK 0 13 0 0, HEX #FFDBE3 */
+  --peach: 27 100% 84%; /* RGB 255 212 175, CMYK 0 19 31 0, HEX #FFD4AF */
+  --honey: 24 57% 87%; /* RGB 255 230 189, CMYK 0 09 28 0, HEX #FFE6BD */
   
   /* Chart Colors */
-  --chart-1: 12 76% 61%;
-  --chart-2: 173 58% 39%;
-  --chart-3: 197 37% 24%;
-  --chart-4: 43 74% 66%;
-  --chart-5: 27 87% 67%;
+  --chart-1: 0 94% 70%; /* KWILI RED */
+  --chart-2: 195 50% 92%; /* SKY */
+  --chart-3: 34 67% 15%; /* BARK */
+  --chart-4: 27 100% 84%; /* PEACH */
+  --chart-5: 24 57% 87%; /* HONEY */
   
   /* Health Category Colors */
-  --health-cardiovascular: 354 70% 54%;
-  --health-brain: 221 83% 71%;
-  --health-metabolic: 159 64% 51%;
-  --health-inflammation: 36 100% 65%;
-  --health-hormonal: 292 76% 75%;
+  --health-cardiovascular: 0 94% 70%; /* KWILI RED */
+  --health-brain: 195 50% 92%; /* SKY */
+  --health-metabolic: 34 67% 15%; /* BARK */
+  --health-inflammation: 27 100% 84%; /* PEACH */
+  --health-hormonal: 9 100% 84%; /* ROSE */
   
   /* Score related colors */
-  --score-background: 220 14% 96%;
-  --score-progress: 221 83% 53%;
-  --score-text: 222 47% 11%;
-  --score-positive: 142 76% 36%;
-  --score-negative: 354 70% 54%;
+  --score-background: 48 38% 91%; /* MIST */
+  --score-progress: 0 94% 70%; /* KWILI RED */
+  --score-text: 34 67% 15%; /* BARK */
+  --score-positive: 24 57% 87%; /* HONEY */
+  --score-negative: 0 94% 70%; /* KWILI RED */
   
   /* Border radius */
   --radius: 0.5rem;
   
   /* Sidebar colors */
-  --sidebar-background: 0 0% 98%;
-  --sidebar-foreground: 240 5.3% 26.1%;
-  --sidebar-primary: 240 5.9% 10%;
-  --sidebar-primary-foreground: 0 0% 98%;
-  --sidebar-accent: 240 4.8% 95.9%;
-  --sidebar-accent-foreground: 240 5.9% 10%;
-  --sidebar-border: 220 13% 91%;
-  --sidebar-ring: 217.2 91.2% 59.8%;
+  --sidebar-background: 48 38% 91%; /* MIST */
+  --sidebar-foreground: 34 67% 15%; /* BARK */
+  --sidebar-primary: 34 67% 15%; /* BARK */
+  --sidebar-primary-foreground: 48 38% 91%; /* MIST */
+  --sidebar-accent: 33 9% 79%; /* FOG */
+  --sidebar-accent-foreground: 34 67% 15%; /* BARK */
+  --sidebar-border: 33 9% 79%; /* FOG */
+  --sidebar-ring: 0 94% 70%; /* KWILI RED */
 }
 
 .dark {
-  --background: 222 47% 11%;
-  --foreground: 210 40% 98%;
-  --card: 222 47% 11%;
-  --card-foreground: 210 40% 98%;
-  --popover: 222 47% 11%;
-  --popover-foreground: 210 40% 98%;
-  --primary: 217.2 91.2% 59.8%;
-  --primary-foreground: 222.2 47.4% 11.2%;
-  --secondary: 217.2 32.6% 17.5%;
-  --secondary-foreground: 210 40% 98%;
-  --muted: 217.2 32.6% 17.5%;
-  --muted-foreground: 215 20.2% 65.1%;
-  --accent: 217.2 32.6% 17.5%;
-  --accent-foreground: 210 40% 98%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 217.2 32.6% 17.5%;
-  --input: 217.2 32.6% 17.5%;
-  --ring: 224.3 76.3% 48%;
+  --background: 34 67% 15%; /* BARK */
+  --foreground: 48 38% 91%; /* MIST */
+  --card: 34 67% 15%; /* BARK */
+  --card-foreground: 48 38% 91%; /* MIST */
+  --popover: 34 67% 15%; /* BARK */
+  --popover-foreground: 48 38% 91%; /* MIST */
+  --primary: 0 94% 70%; /* KWILI RED */
+  --primary-foreground: 48 38% 91%; /* MIST */
+  --secondary: 33 9% 79%; /* FOG */
+  --secondary-foreground: 48 38% 91%; /* MIST */
+  --muted: 33 9% 79%; /* FOG */
+  --muted-foreground: 48 38% 91%; /* MIST with opacity */
+  --accent: 27 100% 84%; /* PEACH */
+  --accent-foreground: 34 67% 15%; /* BARK */
+  --destructive: 0 94% 70%; /* KWILI RED */
+  --destructive-foreground: 48 38% 91%; /* MIST */
+  --border: 33 9% 79%; /* FOG */
+  --input: 33 9% 79%; /* FOG */
+  --ring: 0 94% 70%; /* KWILI RED */
   
   /* Chart Colors (dark mode) */
-  --chart-1: 220 70% 50%;
-  --chart-2: 160 60% 45%;
-  --chart-3: 30 80% 55%;
-  --chart-4: 280 65% 60%;
-  --chart-5: 340 75% 55%;
+  --chart-1: 0 94% 70%; /* KWILI RED */
+  --chart-2: 195 50% 92%; /* SKY */
+  --chart-3: 48 38% 91%; /* MIST */
+  --chart-4: 27 100% 84%; /* PEACH */
+  --chart-5: 24 57% 87%; /* HONEY */
   
   /* Health Category Colors (dark mode) */
-  --health-cardiovascular: 354 70% 60%;
-  --health-brain: 221 83% 71%;
-  --health-metabolic: 159 64% 51%;
-  --health-inflammation: 36 100% 65%;
-  --health-hormonal: 292 76% 75%;
+  --health-cardiovascular: 0 94% 70%; /* KWILI RED */
+  --health-brain: 195 50% 92%; /* SKY */
+  --health-metabolic: 48 38% 91%; /* MIST */
+  --health-inflammation: 27 100% 84%; /* PEACH */
+  --health-hormonal: 9 100% 84%; /* ROSE */
   
   /* Score related colors (dark mode) */
-  --score-background: 222 30% 20%;
-  --score-progress: 217.2 91.2% 59.8%;
-  --score-text: 210 40% 98%;
-  --score-positive: 142 76% 45%;
-  --score-negative: 354 70% 60%;
+  --score-background: 34 67% 25%; /* Darker BARK */
+  --score-progress: 0 94% 70%; /* KWILI RED */
+  --score-text: 48 38% 91%; /* MIST */
+  --score-positive: 24 57% 87%; /* HONEY */
+  --score-negative: 0 94% 70%; /* KWILI RED */
   
   /* Sidebar colors */
-  --sidebar-background: 240 5.9% 10%;
-  --sidebar-foreground: 240 4.8% 95.9%;
-  --sidebar-primary: 224.3 76.3% 48%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 240 3.7% 15.9%;
-  --sidebar-accent-foreground: 240 4.8% 95.9%;
-  --sidebar-border: 240 3.7% 15.9%;
-  --sidebar-ring: 217.2 91.2% 59.8%;
+  --sidebar-background: 34 67% 15%; /* BARK */
+  --sidebar-foreground: 48 38% 91%; /* MIST */
+  --sidebar-primary: 0 94% 70%; /* KWILI RED */
+  --sidebar-primary-foreground: 34 67% 15%; /* BARK */
+  --sidebar-accent: 33 9% 79%; /* FOG */
+  --sidebar-accent-foreground: 48 38% 91%; /* MIST */
+  --sidebar-border: 33 9% 79%; /* FOG */
+  --sidebar-ring: 0 94% 70%; /* KWILI RED */
 }
 
 @layer base {
@@ -195,7 +216,7 @@
   }
   
   .stat-value {
-    font-family: 'Fraunces', serif;
+    font-family: 'Inter', sans-serif;
     @apply text-4xl font-medium;
   }
   
@@ -209,7 +230,7 @@
   }
   
   .result-value {
-    font-family: 'Fraunces', serif;
+    font-family: 'Inter', sans-serif;
     @apply text-5xl font-medium text-primary;
   }
   

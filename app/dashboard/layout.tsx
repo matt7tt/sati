@@ -1,11 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { LayoutDashboard, User, Settings, LogOut, FileText, ShieldCheck, MessageSquare, Activity, Utensils, ChevronLeft, ChevronRight, Menu } from "lucide-react"
 import type React from "react"
+import { toast } from '@/components/ui/use-toast'
 
 export default function DashboardLayout({
   children,
@@ -15,6 +16,7 @@ export default function DashboardLayout({
   const [isLoading, setIsLoading] = useState(true)
   const [isCollapsed, setIsCollapsed] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
 
   useEffect(() => {
     // Check if there's a saved sidebar state in localStorage
@@ -56,6 +58,14 @@ export default function DashboardLayout({
     localStorage.removeItem("access_token")
     localStorage.removeItem("isAuthenticated")
     window.location.replace("/login")
+  }
+
+  // Helper function to check if a path is active (current path or subpath)
+  const isActivePath = (path: string) => {
+    if (path === '/dashboard') {
+      return pathname === '/dashboard'
+    }
+    return pathname.startsWith(path)
   }
 
   if (isLoading) {
@@ -100,14 +110,17 @@ export default function DashboardLayout({
 
           <div className={`p-4 border-b flex items-center ${isCollapsed ? 'justify-center md:p-3' : 'justify-start'}`}>
             <Link href="/dashboard" className={`font-bold text-primary ${isCollapsed ? 'text-lg' : 'text-xl'}`}>
-              {isCollapsed ? 'Z.' : 'Zeal.health'}
+              {isCollapsed ? 'K.' : 'KWILT'}
             </Link>
           </div>
           <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
             <Link
               href="/dashboard"
-              className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg bg-primary/5 text-primary font-medium
-                        ${isCollapsed ? 'justify-center md:px-2' : 'justify-start'}`}
+              className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg ${
+                isActivePath('/dashboard') 
+                  ? 'bg-primary/5 text-primary font-medium' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              } transition-colors ${isCollapsed ? 'justify-center md:px-2' : 'justify-start'}`}
               title="Dashboard"
             >
               <LayoutDashboard size={18} />
@@ -115,8 +128,11 @@ export default function DashboardLayout({
             </Link>
             <Link
               href="/dashboard/chat"
-              className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-100 transition-colors
-                        ${isCollapsed ? 'justify-center md:px-2' : 'justify-start'}`}
+              className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg ${
+                isActivePath('/dashboard/chat') 
+                  ? 'bg-primary/5 text-primary font-medium' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              } transition-colors ${isCollapsed ? 'justify-center md:px-2' : 'justify-start'}`}
               title="Chat"
             >
               <MessageSquare size={18} />
@@ -124,8 +140,11 @@ export default function DashboardLayout({
             </Link>
             <Link
               href="/dashboard/profile"
-              className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-100 transition-colors
-                        ${isCollapsed ? 'justify-center md:px-2' : 'justify-start'}`}
+              className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg ${
+                isActivePath('/dashboard/profile') 
+                  ? 'bg-primary/5 text-primary font-medium' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              } transition-colors ${isCollapsed ? 'justify-center md:px-2' : 'justify-start'}`}
               title="Profile"
             >
               <User size={18} />
@@ -133,8 +152,11 @@ export default function DashboardLayout({
             </Link>
             <Link
               href="/dashboard/analyze-results"
-              className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-100 transition-colors
-                        ${isCollapsed ? 'justify-center md:px-2' : 'justify-start'}`}
+              className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg ${
+                isActivePath('/dashboard/analyze-results') 
+                  ? 'bg-primary/5 text-primary font-medium' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              } transition-colors ${isCollapsed ? 'justify-center md:px-2' : 'justify-start'}`}
               title="Analyze Results"
             >
               <FileText size={18} />
@@ -142,8 +164,11 @@ export default function DashboardLayout({
             </Link>
             <Link
               href="/dashboard/lab-results"
-              className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-100 transition-colors
-                        ${isCollapsed ? 'justify-center md:px-2' : 'justify-start'}`}
+              className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg ${
+                isActivePath('/dashboard/lab-results') 
+                  ? 'bg-primary/5 text-primary font-medium' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              } transition-colors ${isCollapsed ? 'justify-center md:px-2' : 'justify-start'}`}
               title="Lab Results"
             >
               <Activity size={18} />
@@ -151,8 +176,11 @@ export default function DashboardLayout({
             </Link>
             <Link
               href="/dashboard/meals"
-              className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-100 transition-colors
-                        ${isCollapsed ? 'justify-center md:px-2' : 'justify-start'}`}
+              className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg ${
+                isActivePath('/dashboard/meals') 
+                  ? 'bg-primary/5 text-primary font-medium' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              } transition-colors ${isCollapsed ? 'justify-center md:px-2' : 'justify-start'}`}
               title="Meals"
             >
               <Utensils size={18} />
@@ -160,8 +188,11 @@ export default function DashboardLayout({
             </Link>
             <Link
               href="/dashboard/settings"
-              className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-100 transition-colors
-                        ${isCollapsed ? 'justify-center md:px-2' : 'justify-start'}`}
+              className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg ${
+                isActivePath('/dashboard/settings') 
+                  ? 'bg-primary/5 text-primary font-medium' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              } transition-colors ${isCollapsed ? 'justify-center md:px-2' : 'justify-start'}`}
               title="Settings"
             >
               <Settings size={18} />

@@ -60,7 +60,16 @@ const config: Config = {
   				'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
   				border: 'hsl(var(--sidebar-border))',
   				ring: 'hsl(var(--sidebar-ring))'
-  			}
+  			},
+        // Brand color palette
+        mist: 'hsl(var(--mist))',
+        fog: 'hsl(var(--fog))',
+        bark: 'hsl(var(--bark))',
+        'kwili-red': 'hsl(var(--kwili-red))',
+        sky: 'hsl(var(--sky))',
+        rose: 'hsl(var(--rose))',
+        peach: 'hsl(var(--peach))',
+        honey: 'hsl(var(--honey))'
   		},
   		borderRadius: {
   			lg: 'var(--radius)',

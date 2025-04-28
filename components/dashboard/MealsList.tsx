@@ -3,24 +3,39 @@
 import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/use-toast"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Text } from "@/components/ui/typography"
 import { Meal } from "@/types/dashboard"
-import { UploadCloud, Calendar, Clock, Info, Heart, Brain, Zap, AlertCircle, Dumbbell } from "lucide-react"
+import { UploadCloud, Calendar, Clock, Info, Heart, Brain, Zap, AlertCircle, Dumbbell, X } from "lucide-react"
+import Image from "next/image"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface MealData {
   id: number
   user_id: number
-  meal_image: string
-  meal_output: string
+  meal_image_url: string
+  meal_output: string | any // This can be a JSON string or parsed object
   meal_rating: string | null
   created_at: string
 }
 
 interface ParsedMeal {
   id: number
+  user_id: number
+  meal_image_url: string
+  meal_output: string | any
+  meal_rating: string | null
+  created_at: string
   name: string
   image_url: string
   consumed_at: string
@@ -35,10 +50,181 @@ interface ParsedMeal {
     metabolic: string
     musculoskeletal: string
   }
+  parsed: {
+    name: string
+    calories: string
+    protein: string
+    carbs: string
+    fat: string
+    ratings: {
+      cardiovascular: string
+      cancer: string
+      cognitive: string
+      metabolic: string
+      musculoskeletal: string
+    }
+    micronutrients?: { name: string; amount: string; unit: string; }[]
+    health_benefits?: string[]
+    recommendations?: string[]
+  }
+  overallRating: string
+  cardColor: string
 }
 
-// Function to extract information from meal_output markdown
-function parseMealOutput(mealOutput: string): {
+// Component to display individual pillar ratings
+const PillarRating = ({ name, rating }: { name: string; rating: string }) => {
+  return (
+    <div className="flex flex-col items-center rounded-md border p-2">
+      <span className="text-xs text-muted-foreground">{name}</span>
+      <span className={`text-lg font-bold ${getRatingColor(rating)}`}>
+        {rating}
+      </span>
+    </div>
+  );
+};
+
+// Updated function to extract information from meal_output JSON
+function parseMealOutput(mealOutput: string | any): {
+  name: string,
+  calories: string,
+  protein: string,
+  carbs: string,
+  fat: string,
+  ratings: {
+    cardiovascular: string,
+    cancer: string,
+    cognitive: string,
+    metabolic: string,
+    musculoskeletal: string
+  },
+  micronutrients?: { name: string; amount: string; unit: string; }[],
+  health_benefits?: string[],
+  recommendations?: string[]
+} {
+  // Default values
+  let result = {
+    name: "Meal",
+    calories: "0",
+    protein: "0",
+    carbs: "0",
+    fat: "0",
+    ratings: {
+      cardiovascular: "C",
+      cancer: "C",
+      cognitive: "C", 
+      metabolic: "C",
+      musculoskeletal: "C"
+    },
+    micronutrients: [] as { name: string; amount: string; unit: string; }[],
+    health_benefits: [] as string[],
+    recommendations: [] as string[]
+  };
+  
+  try {
+    // First, ensure mealOutput is a JSON object
+    let outputData: any;
+    
+    if (typeof mealOutput === 'string') {
+      try {
+        // Try to parse it if it's a string
+        outputData = JSON.parse(mealOutput);
+      } catch (err) {
+        console.warn("Failed to parse meal_output as JSON, falling back to regex parsing");
+        // Fall back to old parsing method for backward compatibility
+        return parseMarkdownOutput(mealOutput);
+      }
+    } else {
+      // It's already an object
+      outputData = mealOutput;
+    }
+    
+    // Extract data from the JSON structure
+    if (outputData) {
+      // Extract meal name
+      if (outputData.meal_name) {
+        result.name = outputData.meal_name;
+      }
+      
+      // Extract calories
+      if (outputData.analysis?.estimated_caloric_content) {
+        const calorieData = outputData.analysis.estimated_caloric_content;
+        // Use the midpoint of min-max range
+        if (calorieData.min && calorieData.max) {
+          result.calories = Math.round((calorieData.min + calorieData.max) / 2).toString();
+        }
+      }
+      
+      // Extract macronutrients
+      if (outputData.analysis?.macronutrients) {
+        const macros = outputData.analysis.macronutrients;
+        
+        if (macros.protein?.amount) {
+          result.protein = macros.protein.amount.toString();
+        }
+        
+        if (macros.carbohydrates?.amount) {
+          result.carbs = macros.carbohydrates.amount.toString();
+        }
+        
+        if (macros.fats?.amount) {
+          result.fat = macros.fats.amount.toString();
+        }
+      }
+      
+      // Extract health ratings
+      if (outputData.analysis?.longevity_pillars) {
+        const pillars = outputData.analysis.longevity_pillars;
+        
+        if (pillars.cardiovascular_health?.grade) {
+          result.ratings.cardiovascular = pillars.cardiovascular_health.grade;
+        }
+        
+        if (pillars.cancer_prevention?.grade) {
+          result.ratings.cancer = pillars.cancer_prevention.grade;
+        }
+        
+        if (pillars.cognitive_health?.grade) {
+          result.ratings.cognitive = pillars.cognitive_health.grade;
+        }
+        
+        if (pillars.metabolic_health?.grade) {
+          result.ratings.metabolic = pillars.metabolic_health.grade;
+        }
+        
+        if (pillars.musculoskeletal_health?.grade) {
+          result.ratings.musculoskeletal = pillars.musculoskeletal_health.grade;
+        }
+      }
+      
+      // Extract micronutrients
+      if (outputData.analysis?.micronutrients && Array.isArray(outputData.analysis.micronutrients)) {
+        result.micronutrients = outputData.analysis.micronutrients.map((nutrient: any) => ({
+          name: nutrient.name || '',
+          amount: nutrient.amount?.toString() || '0',
+          unit: nutrient.unit || 'mg'
+        }));
+      }
+      
+      // Extract health benefits
+      if (outputData.analysis?.health_benefits && Array.isArray(outputData.analysis.health_benefits)) {
+        result.health_benefits = outputData.analysis.health_benefits;
+      }
+      
+      // Extract recommendations
+      if (outputData.recommendations && Array.isArray(outputData.recommendations)) {
+        result.recommendations = outputData.recommendations;
+      }
+    }
+  } catch (error) {
+    console.error("Error parsing meal output:", error);
+    // Return default values in case of error
+  }
+  
+  return result;
+}
+
+// Keep the old function for backward compatibility, renamed for clarity
+function parseMarkdownOutput(mealOutput: string): {
   name: string,
   calories: string,
   protein: string,
@@ -70,15 +256,15 @@ function parseMealOutput(mealOutput: string): {
   
   // Extract meal name - use regex to find what the meal appears to be
   const mealNameMatch = mealOutput.match(/meal comprises (.*?)\./) || 
-                        mealOutput.match(/meal consists of (.*?)\./) ||
-                        mealOutput.match(/meal includes (.*?)\./);
+                      mealOutput.match(/meal consists of (.*?)\./) ||
+                      mealOutput.match(/meal includes (.*?)\./);
   if (mealNameMatch && mealNameMatch[1]) {
     result.name = mealNameMatch[1].charAt(0).toUpperCase() + mealNameMatch[1].slice(1);
   }
   
   // Extract calories
   const caloriesMatch = mealOutput.match(/Total Estimated Calories[^\d]*(\d+)[-\s]*(\d+)/) ||
-                        mealOutput.match(/Calories[^\d]*(\d+)[-\s]*(\d+)/);
+                      mealOutput.match(/Calories[^\d]*(\d+)[-\s]*(\d+)/);
   if (caloriesMatch) {
     // Use the midpoint of the range
     const minCal = parseInt(caloriesMatch[1]);
@@ -88,7 +274,7 @@ function parseMealOutput(mealOutput: string): {
   
   // Extract macronutrients
   const proteinMatch = mealOutput.match(/Protein[^:]*:[^0-9]*(\d+)[-\s]*(\d+)\s*grams/) || 
-                       mealOutput.match(/Protein[^:]*:[^0-9]*(\d+)[-\s]*(\d+)\s*g/);
+                     mealOutput.match(/Protein[^:]*:[^0-9]*(\d+)[-\s]*(\d+)\s*g/);
   if (proteinMatch) {
     const minProtein = parseInt(proteinMatch[1]);
     const maxProtein = parseInt(proteinMatch[2]);
@@ -96,7 +282,7 @@ function parseMealOutput(mealOutput: string): {
   }
   
   const carbsMatch = mealOutput.match(/Carbohydrates[^:]*:[^0-9]*(\d+)[-\s]*(\d+)\s*grams/) || 
-                     mealOutput.match(/Carbohydrates[^:]*:[^0-9]*(\d+)[-\s]*(\d+)\s*g/);
+                   mealOutput.match(/Carbohydrates[^:]*:[^0-9]*(\d+)[-\s]*(\d+)\s*g/);
   if (carbsMatch) {
     const minCarbs = parseInt(carbsMatch[1]);
     const maxCarbs = parseInt(carbsMatch[2]);
@@ -104,7 +290,7 @@ function parseMealOutput(mealOutput: string): {
   }
   
   const fatMatch = mealOutput.match(/Fats[^:]*:[^0-9]*(\d+)[-\s]*(\d+)\s*grams/) || 
-                   mealOutput.match(/Fats[^:]*:[^0-9]*(\d+)[-\s]*(\d+)\s*g/);
+                 mealOutput.match(/Fats[^:]*:[^0-9]*(\d+)[-\s]*(\d+)\s*g/);
   if (fatMatch) {
     const minFat = parseInt(fatMatch[1]);
     const maxFat = parseInt(fatMatch[2]);
@@ -143,12 +329,12 @@ function parseMealOutput(mealOutput: string): {
 // Function to get rating color
 function getRatingColor(rating: string): string {
   switch(rating) {
-    case 'A': return 'bg-green-500/20 text-green-600 border-green-500/50';
-    case 'B': return 'bg-emerald-500/20 text-emerald-600 border-emerald-500/50';
-    case 'C': return 'bg-yellow-500/20 text-yellow-600 border-yellow-500/50';
-    case 'D': return 'bg-orange-500/20 text-orange-600 border-orange-500/50';
-    case 'F': return 'bg-red-500/20 text-red-600 border-red-500/50';
-    default: return 'bg-gray-500/20 text-gray-600 border-gray-500/50';
+    case 'A': return 'text-green-600';
+    case 'B': return 'text-emerald-600';
+    case 'C': return 'text-yellow-600';
+    case 'D': return 'text-orange-600';
+    case 'F': return 'text-red-600';
+    default: return 'text-gray-600';
   }
 }
 
@@ -175,6 +361,39 @@ function calculateOverallRating(ratings: {[key: string]: string}): string {
   return 'F';
 }
 
+// Extract a section from meal_output text
+function extractSection(text: string, sectionHeader: string): string | null {
+  if (!text || !sectionHeader) return null;
+  
+  const startIndex = text.indexOf(sectionHeader);
+  if (startIndex === -1) return null;
+  
+  let endIndex = text.length;
+  // Find the next section header after this one
+  const nextSectionHeaders = [
+    'Ingredients:', 
+    'Preparation:', 
+    'Nutritional Analysis:', 
+    'Dietary Notes:', 
+    'Dietary Considerations:', 
+    'Health Ratings:', 
+    'Recommendations:'
+  ];
+  
+  for (const header of nextSectionHeaders) {
+    if (header === sectionHeader) continue;
+    
+    const headerIndex = text.indexOf(header, startIndex + sectionHeader.length);
+    if (headerIndex !== -1 && headerIndex < endIndex) {
+      endIndex = headerIndex;
+    }
+  }
+  
+  // Extract the content between the section header and the next header
+  const sectionContent = text.substring(startIndex + sectionHeader.length, endIndex).trim();
+  return sectionContent;
+}
+
 export default function MealsList() {
   const [meals, setMeals] = useState<ParsedMeal[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -183,6 +402,7 @@ export default function MealsList() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const { toast } = useToast()
+  const [selectedMeal, setSelectedMeal] = useState<ParsedMeal | null>(null)
 
   useEffect(() => {
     async function fetchMeals() {
@@ -220,12 +440,12 @@ export default function MealsList() {
               console.log(`Parsed output for meal ${mealData.id}:`, parsedOutput);
               
               // Build the image URL
-              const imageUrl = mealData.meal_image ? 
-                `${process.env.NEXT_PUBLIC_API_URL}/static/${mealData.meal_image}` : 
+              const imageUrl = mealData.meal_image_url ? 
+                `${process.env.NEXT_PUBLIC_API_URL}/static/${mealData.meal_image_url}` : 
                 '/placeholder-meal.jpg';
               
               return {
-                id: mealData.id,
+                ...mealData,
                 name: parsedOutput.name,
                 image_url: imageUrl,
                 consumed_at: mealData.created_at,
@@ -233,7 +453,10 @@ export default function MealsList() {
                 protein: parsedOutput.protein,
                 carbs: parsedOutput.carbs,
                 fat: parsedOutput.fat,
-                ratings: parsedOutput.ratings
+                ratings: parsedOutput.ratings,
+                parsed: parsedOutput,
+                overallRating: calculateOverallRating(parsedOutput.ratings),
+                cardColor: getRatingColor(calculateOverallRating(parsedOutput.ratings))
               };
             });
             
@@ -359,32 +582,33 @@ export default function MealsList() {
           console.log("Updated meals data:", data)
           
           // Process the meal data like in the fetch meals function
-          if (Array.isArray(data)) {
-            const parsedMeals = data.map((mealData) => {
-              // Extract meal details from the markdown output
-              const parsedOutput = parseMealOutput(mealData.meal_output || '');
-              
-              // Build the image URL
-              const imageUrl = mealData.meal_image ? 
-                `${process.env.NEXT_PUBLIC_API_URL}/static/${mealData.meal_image}` : 
-                '/placeholder-meal.jpg';
-              
-              return {
-                id: mealData.id,
-                name: parsedOutput.name,
-                image_url: imageUrl,
-                consumed_at: mealData.created_at,
-                calories: parsedOutput.calories,
-                protein: parsedOutput.protein,
-                carbs: parsedOutput.carbs,
-                fat: parsedOutput.fat,
-                ratings: parsedOutput.ratings
-              };
-            });
+          const parsedMeals = data.map((mealData) => {
+            // Extract meal details from the markdown output
+            const parsedOutput = parseMealOutput(mealData.meal_output || '');
             
-            console.log("Parsed meals after upload:", parsedMeals);
-            setMeals(parsedMeals);
-          }
+            // Build the image URL
+            const imageUrl = mealData.meal_image_url ? 
+              `${process.env.NEXT_PUBLIC_API_URL}/static/${mealData.meal_image_url}` : 
+              '/placeholder-meal.jpg';
+            
+            return {
+              ...mealData,
+              name: parsedOutput.name,
+              image_url: imageUrl,
+              consumed_at: mealData.created_at,
+              calories: parsedOutput.calories,
+              protein: parsedOutput.protein,
+              carbs: parsedOutput.carbs,
+              fat: parsedOutput.fat,
+              ratings: parsedOutput.ratings,
+              parsed: parsedOutput,
+              overallRating: calculateOverallRating(parsedOutput.ratings),
+              cardColor: getRatingColor(calculateOverallRating(parsedOutput.ratings))
+            };
+          });
+          
+          console.log("Parsed meals after upload:", parsedMeals);
+          setMeals(parsedMeals);
         } else {
           console.error("Failed to refresh meals after upload:", mealsResponse.status)
           try {
@@ -529,91 +753,125 @@ export default function MealsList() {
       {/* Meals List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {meals.map((meal) => (
-          <Card key={meal.id} className="overflow-hidden bg-card/50 backdrop-blur-sm hover:shadow-md transition-shadow">
-            <div className="aspect-video relative overflow-hidden">
-              <img 
-                src={meal.image_url} 
-                alt={meal.name}
-                className="object-cover w-full h-full"
-              />
-            </div>
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                <span>{formatDate(meal.consumed_at)}</span>
-                <span className="text-xs">•</span>
-                <Clock className="h-4 w-4" />
-                <span>{formatTime(meal.consumed_at)}</span>
+          <Card
+            key={meal.id}
+            className="overflow-hidden border bg-background shadow cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => setSelectedMeal(meal)}
+          >
+            {meal.meal_image_url && (
+              <div className="relative h-40 w-full">
+                <Image
+                  alt={`Image of ${meal.parsed.name}`}
+                  src={meal.meal_image_url}
+                  layout="fill"
+                  objectFit="cover"
+                  className="h-full w-full object-cover"
+                />
               </div>
+            )}
+            <CardHeader>
+              <CardTitle className="text-xl">{meal.parsed.name}</CardTitle>
+              <CardDescription>
+                {new Date(meal.consumed_at).toLocaleDateString()}
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-4 gap-2 mb-4">
-                <div className="text-center">
-                  <Text className="text-sm text-muted-foreground">Calories</Text>
-                  <Text className="text-lg font-semibold">{meal.calories}</Text>
+            <CardContent className="grid gap-4">
+              <div className="grid grid-cols-4 gap-4 text-sm">
+                <div className="flex flex-col items-center justify-center space-y-1">
+                  <span className="text-xs text-muted-foreground">Calories</span>
+                  <span className="text-lg font-bold">{meal.parsed.calories}</span>
                 </div>
-                <div className="text-center">
-                  <Text className="text-sm text-muted-foreground">Protein</Text>
-                  <Text className="text-lg font-semibold">{meal.protein}g</Text>
+                <div className="flex flex-col items-center justify-center space-y-1">
+                  <span className="text-xs text-muted-foreground">Protein</span>
+                  <span className="text-lg font-bold">{meal.parsed.protein}g</span>
                 </div>
-                <div className="text-center">
-                  <Text className="text-sm text-muted-foreground">Carbs</Text>
-                  <Text className="text-lg font-semibold">{meal.carbs}g</Text>
+                <div className="flex flex-col items-center justify-center space-y-1">
+                  <span className="text-xs text-muted-foreground">Carbs</span>
+                  <span className="text-lg font-bold">{meal.parsed.carbs}g</span>
                 </div>
-                <div className="text-center">
-                  <Text className="text-sm text-muted-foreground">Fat</Text>
-                  <Text className="text-lg font-semibold">{meal.fat}g</Text>
+                <div className="flex flex-col items-center justify-center space-y-1">
+                  <span className="text-xs text-muted-foreground">Fat</span>
+                  <span className="text-lg font-bold">{meal.parsed.fat}g</span>
                 </div>
               </div>
               
-              <div className="mb-4">
-                <Text className="text-sm text-muted-foreground mb-2">Health Ratings</Text>
-                <div className="grid grid-cols-5 gap-1">
-                  <div className="flex flex-col items-center">
-                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${getRatingColor(meal.ratings.cardiovascular)}`}>
-                      <Text className="font-bold">{meal.ratings.cardiovascular}</Text>
-                    </div>
-                    <Text className="text-xs text-muted-foreground mt-1">Heart</Text>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${getRatingColor(meal.ratings.cancer)}`}>
-                      <Text className="font-bold">{meal.ratings.cancer}</Text>
-                    </div>
-                    <Text className="text-xs text-muted-foreground mt-1">Cancer</Text>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${getRatingColor(meal.ratings.cognitive)}`}>
-                      <Text className="font-bold">{meal.ratings.cognitive}</Text>
-                    </div>
-                    <Text className="text-xs text-muted-foreground mt-1">Brain</Text>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${getRatingColor(meal.ratings.metabolic)}`}>
-                      <Text className="font-bold">{meal.ratings.metabolic}</Text>
-                    </div>
-                    <Text className="text-xs text-muted-foreground mt-1">Metab</Text>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${getRatingColor(meal.ratings.musculoskeletal)}`}>
-                      <Text className="font-bold">{meal.ratings.musculoskeletal}</Text>
-                    </div>
-                    <Text className="text-xs text-muted-foreground mt-1">Muscle</Text>
+              {/* Health Pillars Ratings */}
+              <div>
+                <h4 className="mb-2 text-sm font-medium">Health Ratings</h4>
+                <div className="grid grid-cols-3 gap-2">
+                  <PillarRating 
+                    name="Cardiovascular" 
+                    rating={meal.parsed.ratings.cardiovascular} 
+                  />
+                  <PillarRating 
+                    name="Cancer" 
+                    rating={meal.parsed.ratings.cancer} 
+                  />
+                  <PillarRating 
+                    name="Cognitive" 
+                    rating={meal.parsed.ratings.cognitive} 
+                  />
+                  <PillarRating 
+                    name="Metabolic" 
+                    rating={meal.parsed.ratings.metabolic} 
+                  />
+                  <PillarRating 
+                    name="Musculoskeletal" 
+                    rating={meal.parsed.ratings.musculoskeletal} 
+                  />
+                  <div className="flex flex-col items-center rounded-md border p-2">
+                    <span className="text-xs text-muted-foreground">Overall</span>
+                    <span className={`text-lg font-bold ${getRatingColor(meal.overallRating)}`}>
+                      {meal.overallRating}
+                    </span>
                   </div>
                 </div>
               </div>
               
-              <div className="flex justify-between items-center">
-                <Button variant="ghost" size="sm" className="text-primary">
-                  <Info className="h-4 w-4 mr-1" />
-                  Details
-                </Button>
-                <Badge variant="outline" className={getRatingColor(calculateOverallRating(meal.ratings))}>
-                  {calculateOverallRating(meal.ratings) === 'A' ? 'Excellent' : 
-                   calculateOverallRating(meal.ratings) === 'B' ? 'Good' : 
-                   calculateOverallRating(meal.ratings) === 'C' ? 'Average' :
-                   calculateOverallRating(meal.ratings) === 'D' ? 'Poor' : 'Unhealthy'}
-                </Badge>
-              </div>
+              {/* Micronutrients - Only show if available */}
+              {meal.parsed.micronutrients && meal.parsed.micronutrients.length > 0 && (
+                <div>
+                  <h4 className="mb-2 text-sm font-medium">Key Micronutrients</h4>
+                  <div className="max-h-40 overflow-y-auto">
+                    <div className="grid grid-cols-2 gap-2">
+                      {meal.parsed.micronutrients.slice(0, 6).map((nutrient, index) => (
+                        <div key={index} className="flex items-center justify-between rounded-md border p-2 text-xs">
+                          <span>{nutrient.name}</span>
+                          <span className="font-medium">{nutrient.amount} {nutrient.unit}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Health Benefits - Only show if available */}
+              {meal.parsed.health_benefits && meal.parsed.health_benefits.length > 0 && (
+                <div>
+                  <h4 className="mb-2 text-sm font-medium">Health Benefits</h4>
+                  <div className="max-h-40 overflow-y-auto rounded-md border p-2">
+                    <ul className="list-inside list-disc text-xs">
+                      {meal.parsed.health_benefits.slice(0, 3).map((benefit, index) => (
+                        <li key={index}>{benefit}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+              
+              {/* Recommendations - Only show if available */}
+              {meal.parsed.recommendations && meal.parsed.recommendations.length > 0 && (
+                <div>
+                  <h4 className="mb-2 text-sm font-medium">Recommendations</h4>
+                  <div className="max-h-40 overflow-y-auto rounded-md border p-2">
+                    <ul className="list-inside list-disc text-xs">
+                      {meal.parsed.recommendations.slice(0, 2).map((rec, index) => (
+                        <li key={index}>{rec}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}
@@ -624,6 +882,203 @@ export default function MealsList() {
           <p className="text-lg text-muted-foreground">No meals recorded yet</p>
           <p className="text-sm text-muted-foreground mt-1">Upload a meal image to get started</p>
         </div>
+      )}
+
+      {/* Meal Details Dialog */}
+      {selectedMeal && (
+        <Dialog open={!!selectedMeal} onOpenChange={() => setSelectedMeal(null)}>
+          <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-auto">
+            <DialogHeader className="pb-2">
+              <DialogTitle className="text-xl">{selectedMeal.parsed.name}</DialogTitle>
+              <DialogDescription className="pt-1">
+                {new Date(selectedMeal.consumed_at).toLocaleDateString()}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="grid gap-6">
+              {/* Nutrition Info */}
+              <div>
+                <h3 className="text-sm font-medium mb-3">Nutrition Details</h3>
+                <div className="grid grid-cols-4 gap-6">
+                  <div className="flex flex-col items-center space-y-1">
+                    <span className="text-xs text-muted-foreground">Calories</span>
+                    <span className="text-lg font-bold">{selectedMeal.parsed.calories}</span>
+                  </div>
+                  <div className="flex flex-col items-center space-y-1">
+                    <span className="text-xs text-muted-foreground">Protein</span>
+                    <span className="text-lg font-bold">{selectedMeal.parsed.protein}g</span>
+                  </div>
+                  <div className="flex flex-col items-center space-y-1">
+                    <span className="text-xs text-muted-foreground">Carbs</span>
+                    <span className="text-lg font-bold">{selectedMeal.parsed.carbs}g</span>
+                  </div>
+                  <div className="flex flex-col items-center space-y-1">
+                    <span className="text-xs text-muted-foreground">Fat</span>
+                    <span className="text-lg font-bold">{selectedMeal.parsed.fat}g</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Health Ratings */}
+              <div>
+                <h3 className="text-sm font-medium mb-3">Health Ratings</h3>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="flex flex-col items-center rounded-md border p-2">
+                    <span className="text-xs text-muted-foreground">Cardiovascular</span>
+                    <span className={`text-lg font-bold ${getRatingColor(selectedMeal.parsed.ratings.cardiovascular)}`}>
+                      {selectedMeal.parsed.ratings.cardiovascular}
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-center rounded-md border p-2">
+                    <span className="text-xs text-muted-foreground">Cancer</span>
+                    <span className={`text-lg font-bold ${getRatingColor(selectedMeal.parsed.ratings.cancer)}`}>
+                      {selectedMeal.parsed.ratings.cancer}
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-center rounded-md border p-2">
+                    <span className="text-xs text-muted-foreground">Cognitive</span>
+                    <span className={`text-lg font-bold ${getRatingColor(selectedMeal.parsed.ratings.cognitive)}`}>
+                      {selectedMeal.parsed.ratings.cognitive}
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-center rounded-md border p-2">
+                    <span className="text-xs text-muted-foreground">Metabolic</span>
+                    <span className={`text-lg font-bold ${getRatingColor(selectedMeal.parsed.ratings.metabolic)}`}>
+                      {selectedMeal.parsed.ratings.metabolic}
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-center rounded-md border p-2">
+                    <span className="text-xs text-muted-foreground">Musculoskeletal</span>
+                    <span className={`text-lg font-bold ${getRatingColor(selectedMeal.parsed.ratings.musculoskeletal)}`}>
+                      {selectedMeal.parsed.ratings.musculoskeletal}
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-center rounded-md border p-2">
+                    <span className="text-xs text-muted-foreground">Overall</span>
+                    <span className={`text-lg font-bold ${getRatingColor(selectedMeal.overallRating)}`}>
+                      {selectedMeal.overallRating}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Ingredients - Display if available in meal_output */}
+              {typeof selectedMeal.meal_output === 'string' && selectedMeal.meal_output.includes('Ingredients:') && (
+                <div>
+                  <h3 className="text-sm font-medium mb-3">Ingredients</h3>
+                  <div className="rounded-md border p-3">
+                    <div className="text-sm whitespace-pre-wrap">
+                      {extractSection(selectedMeal.meal_output, 'Ingredients:')}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Preparation - Display if available in meal_output */}
+              {typeof selectedMeal.meal_output === 'string' && selectedMeal.meal_output.includes('Preparation:') && (
+                <div>
+                  <h3 className="text-sm font-medium mb-3">Preparation</h3>
+                  <div className="rounded-md border p-3">
+                    <div className="text-sm whitespace-pre-wrap">
+                      {extractSection(selectedMeal.meal_output, 'Preparation:')}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Dietary Notes - Display if available in meal_output */}
+              {typeof selectedMeal.meal_output === 'string' && 
+               (selectedMeal.meal_output.includes('Dietary Notes:') || selectedMeal.meal_output.includes('Dietary Considerations:')) && (
+                <div>
+                  <h3 className="text-sm font-medium mb-3">Dietary Notes</h3>
+                  <div className="rounded-md border p-3">
+                    <div className="text-sm whitespace-pre-wrap">
+                      {extractSection(selectedMeal.meal_output, 'Dietary Notes:') || 
+                       extractSection(selectedMeal.meal_output, 'Dietary Considerations:')}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Micronutrients */}
+              {selectedMeal.parsed.micronutrients && selectedMeal.parsed.micronutrients.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium mb-3">Micronutrients</h3>
+                  <div className="grid grid-cols-2 gap-2 max-h-[150px] overflow-y-auto pr-1">
+                    {selectedMeal.parsed.micronutrients.map((nutrient, index) => (
+                      <div key={index} className="flex items-center justify-between rounded-md border p-2 text-xs">
+                        <span>{nutrient.name}</span>
+                        <span className="font-medium">{nutrient.amount} {nutrient.unit}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Health Benefits */}
+              {selectedMeal.parsed.health_benefits && selectedMeal.parsed.health_benefits.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium mb-3">Health Benefits</h3>
+                  <div className="rounded-md border p-3">
+                    <ul className="list-disc pl-5 space-y-1 text-sm">
+                      {selectedMeal.parsed.health_benefits.map((benefit, index) => (
+                        <li key={index}>{benefit}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+              
+              {/* Recommendations */}
+              {selectedMeal.parsed.recommendations && selectedMeal.parsed.recommendations.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium mb-3">Recommendations</h3>
+                  <div className="rounded-md border p-3">
+                    <ul className="list-disc pl-5 space-y-1 text-sm">
+                      {selectedMeal.parsed.recommendations.map((rec, index) => (
+                        <li key={index}>{rec}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+              
+              {/* Full Analysis */}
+              {typeof selectedMeal.meal_output === 'string' && (
+                <div>
+                  <h3 className="text-sm font-medium mb-3 flex items-center">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-7 text-xs" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const el = document.getElementById(`full-analysis-${selectedMeal.id}`);
+                        if (el) {
+                          el.style.display = el.style.display === 'none' ? 'block' : 'none';
+                        }
+                      }}
+                    >
+                      <Info className="h-3 w-3 mr-1" /> View Full Analysis
+                    </Button>
+                  </h3>
+                  <div 
+                    id={`full-analysis-${selectedMeal.id}`} 
+                    className="rounded-md border p-3 max-h-[300px] overflow-y-auto"
+                    style={{ display: 'none' }}
+                  >
+                    <div className="text-sm whitespace-pre-wrap">
+                      {typeof selectedMeal.meal_output === 'string' 
+                        ? selectedMeal.meal_output 
+                        : JSON.stringify(selectedMeal.meal_output, null, 2)
+                      }
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   )

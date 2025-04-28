@@ -88,7 +88,7 @@ module.exports = {
       },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
-        serif: ['Fraunces', 'serif'],
+        serif: ['Inter', 'sans-serif'],
       },
       borderRadius: {
         lg: "var(--radius)",

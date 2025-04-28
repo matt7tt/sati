@@ -7,11 +7,20 @@ import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
 import { jsPDF } from 'jspdf';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { BarChart, Users, ArrowUpRight, Activity, Heart, Brain, Zap, AlertCircle, Utensils, Dumbbell, Pill, Stethoscope, Target, CheckCircle, Clock, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { BarChart, Users, ArrowUpRight, Activity, Heart, Brain, Zap, AlertCircle, Utensils, Dumbbell, Pill, Stethoscope, Target, CheckCircle, Clock, ThumbsUp, ThumbsDown, MessageSquare, Edit } from 'lucide-react';
 import { Heading, Text } from '@/components/ui/typography';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Insight {
   id: number;
@@ -33,12 +42,11 @@ interface HealthInsights {
 
 interface UserStats {
   user_id: number;
-  phenotypic_age: number;
-  age: number;
-  created_date: string;
-  vo2_max?: number;
-  body_fat_percentage?: number;
-  muscle_mass?: number;
+  stat_id?: number | null;
+  stat_output?: string | null;
+  created_at?: string | null; 
+  updated_at?: string | null;
+  stat_name?: string | null;
 }
 
 interface UserPlan {
@@ -80,6 +88,14 @@ interface ActionComment {
   id: number;
   user_action_id: number;
   action_comment: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface PlanComment {
+  id: number;
+  user_plan_id: number;
+  user_plan_comment: string;
   created_at: string;
   updated_at: string;
 }
@@ -480,6 +496,11 @@ export default function DashboardStats() {
   const [showAllActions, setShowAllActions] = useState(false);
   const [allInsights, setAllInsights] = useState<Insight[]>([]);
   const [actionComments, setActionComments] = useState<{[key: number]: ActionComment[]}>({});
+  const [planComments, setPlanComments] = useState<{[key: number]: PlanComment}>({});
+  const [showCommentModal, setShowCommentModal] = useState(false);
+  const [activeCommentPlanId, setActiveCommentPlanId] = useState<number | null>(null);
+  const [commentText, setCommentText] = useState('');
+  const [isEditingComment, setIsEditingComment] = useState(false);
   
   useEffect(() => {
     let isMounted = true;
@@ -498,15 +519,47 @@ export default function DashboardStats() {
         });
         
         if (response.ok) {
-          const data: UserStats = await response.json();
+          const data = await response.json();
           if (isMounted) {
-            setStats(prev => ({
-              ...prev,
-              phenotypicAge: data.phenotypic_age?.toString() || '38',
-              vo2Max: data.vo2_max?.toString() || '42.5',
-              bodyFat: data.body_fat_percentage?.toString() || '18.2',
-              muscleMass: data.muscle_mass?.toString() || '32.6'
-            }));
+            // Check if data is an array (multiple stats) or a single object
+            if (Array.isArray(data)) {
+              // Process multiple stats
+              const statsUpdate = { ...stats };
+              
+              data.forEach(stat => {
+                // Only update if stat_name matches the variable name
+                if (stat.stat_name === 'phenotypicAge') {
+                  statsUpdate.phenotypicAge = stat.stat_output?.toString() || '38';
+                } else if (stat.stat_name === 'vo2Max') {
+                  statsUpdate.vo2Max = stat.stat_output?.toString() || '42.5';
+                } else if (stat.stat_name === 'bodyFat') {
+                  statsUpdate.bodyFat = stat.stat_output?.toString() || '18.2';
+                } else if (stat.stat_name === 'muscleMass') {
+                  statsUpdate.muscleMass = stat.stat_output?.toString() || '32.6';
+                }
+              });
+              
+              setStats(statsUpdate);
+            } else {
+              // Handle single stat object
+              const stat = data as UserStats;
+              setStats(prev => {
+                const updated = { ...prev };
+                
+                // Only update the matching stat
+                if (stat.stat_name === 'phenotypicAge') {
+                  updated.phenotypicAge = stat.stat_output?.toString() || '38';
+                } else if (stat.stat_name === 'vo2Max') {
+                  updated.vo2Max = stat.stat_output?.toString() || '42.5';
+                } else if (stat.stat_name === 'bodyFat') {
+                  updated.bodyFat = stat.stat_output?.toString() || '18.2';
+                } else if (stat.stat_name === 'muscleMass') {
+                  updated.muscleMass = stat.stat_output?.toString() || '32.6';
+                }
+                
+                return updated;
+              });
+            }
           }
         }
       } catch (error) {
@@ -939,6 +992,159 @@ export default function DashboardStats() {
     ? sortActions(actions)
     : sortActions(actions).slice(0, 5);
   
+  useEffect(() => {
+    const fetchPlanComments = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/plan-comments`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const data: PlanComment[] = await response.json();
+          // Organize comments by plan ID for easier lookup
+          const commentsByPlanId: {[key: number]: PlanComment} = {};
+          data.forEach(comment => {
+            commentsByPlanId[comment.user_plan_id] = comment;
+          });
+          setPlanComments(commentsByPlanId);
+        }
+      } catch (error) {
+        console.log('Error fetching plan comments');
+      }
+    };
+
+    fetchPlanComments();
+  }, []);
+
+  const createPlanComment = async (planId: number, comment: string) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/auth/plan-comments?user_plan_id=${planId}&comment=${encodeURIComponent(comment)}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data: PlanComment = await response.json();
+        setPlanComments(prev => ({
+          ...prev,
+          [planId]: data
+        }));
+        return data;
+      }
+      return null;
+    } catch (error) {
+      console.log('Error creating plan comment');
+      return null;
+    }
+  };
+
+  const updatePlanComment = async (commentId: number, planId: number, comment: string) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/auth/plan-comments/${commentId}?comment=${encodeURIComponent(comment)}`;
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data: PlanComment = await response.json();
+        setPlanComments(prev => ({
+          ...prev,
+          [planId]: data
+        }));
+        return data;
+      }
+      return null;
+    } catch (error) {
+      console.log('Error updating plan comment');
+      return null;
+    }
+  };
+
+  const deletePlanComment = async (commentId: number, planId: number) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/auth/plan-comments/${commentId}`;
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        setPlanComments(prev => {
+          const updated = { ...prev };
+          delete updated[planId];
+          return updated;
+        });
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.log('Error deleting plan comment');
+      return false;
+    }
+  };
+
+  const handleAddComment = (planId: number) => {
+    setActiveCommentPlanId(planId);
+    setCommentText('');
+    setIsEditingComment(false);
+    setShowCommentModal(true);
+  };
+
+  const handleViewComment = (planId: number) => {
+    setActiveCommentPlanId(planId);
+    const comment = planComments[planId];
+    if (comment) {
+      setCommentText(comment.user_plan_comment);
+      setIsEditingComment(true);
+      setShowCommentModal(true);
+    }
+  };
+
+  const handleSaveComment = async () => {
+    if (!activeCommentPlanId) return;
+    
+    let result;
+    const existingComment = planComments[activeCommentPlanId];
+    
+    if (existingComment && isEditingComment) {
+      result = await updatePlanComment(existingComment.id, activeCommentPlanId, commentText);
+    } else {
+      result = await createPlanComment(activeCommentPlanId, commentText);
+    }
+    
+    if (result) {
+      setShowCommentModal(false);
+    }
+  };
+
+  const handleDeleteComment = async () => {
+    if (!activeCommentPlanId) return;
+    
+    const existingComment = planComments[activeCommentPlanId];
+    if (existingComment) {
+      const success = await deletePlanComment(existingComment.id, activeCommentPlanId);
+      if (success) {
+        setShowCommentModal(false);
+      }
+    }
+  };
+
   if (isLoading) return <div>Loading stats...</div>;
   
   return (
@@ -1092,14 +1298,23 @@ export default function DashboardStats() {
                               <CheckCircle className="h-4 w-4 text-green-500" />
                             </Button>
                           ) : (
-                            <Button 
-                              variant="outline" 
-                              size="icon" 
-                              onClick={() => markActionComplete(action.id)}
-                              className="h-8 w-8 rounded-full hover:bg-green-50 hover:border-green-200"
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                            </Button>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button 
+                                    variant="outline" 
+                                    size="icon" 
+                                    onClick={() => markActionComplete(action.id)}
+                                    className="h-8 w-8 rounded-full hover:bg-green-50 hover:border-green-200"
+                                  >
+                                    <CheckCircle className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>I've done this!</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           )}
                         </div>
                       </div>
@@ -1410,14 +1625,41 @@ export default function DashboardStats() {
                 return (
                   <TabsContent key={key} value={key} className="space-y-4">
                     <div className="border rounded-xl p-6">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className={`h-9 w-9 rounded-full ${planIcon.bgClass} flex items-center justify-center ${planIcon.textClass}`}>
-                          {planIcon.icon}
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`h-9 w-9 rounded-full ${planIcon.bgClass} flex items-center justify-center ${planIcon.textClass}`}>
+                            {planIcon.icon}
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold">{plan.title}</h3>
+                            <p className="text-sm text-muted-foreground">{plan.objective}</p>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="text-lg font-semibold">{plan.title}</h3>
-                          <p className="text-sm text-muted-foreground">{plan.objective}</p>
-                        </div>
+                        {plan.id && (
+                          <div>
+                            {planComments[plan.id] ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleViewComment(plan.id!)}
+                                className="h-8 px-3 text-xs flex items-center gap-1 bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 hover:text-blue-700"
+                              >
+                                <Edit className="h-3.5 w-3.5 mr-1" />
+                                View Comment
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleAddComment(plan.id!)}
+                                className="h-8 px-3 text-xs flex items-center gap-1"
+                              >
+                                <MessageSquare className="h-3.5 w-3.5 mr-1" />
+                                Add a Comment
+                              </Button>
+                            )}
+                          </div>
+                        )}
                       </div>
                       
                       <div className="space-y-4 mt-6">
@@ -1558,6 +1800,50 @@ export default function DashboardStats() {
           </div>
         </div>
       </div>
+
+      <Dialog open={showCommentModal} onOpenChange={setShowCommentModal}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>
+              {isEditingComment ? 'Edit Comment' : 'Add a Comment'}
+            </DialogTitle>
+            <DialogDescription>
+              {isEditingComment 
+                ? 'Update your notes or observations about this plan' 
+                : 'Add your personal notes or observations about this plan'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Textarea
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              placeholder="Enter your comment here..."
+              className="min-h-[120px]"
+            />
+          </div>
+          <DialogFooter className="flex items-center justify-between">
+            <div>
+              {isEditingComment && (
+                <Button 
+                  variant="outline" 
+                  onClick={handleDeleteComment}
+                  className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                >
+                  Delete
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowCommentModal(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveComment}>
+                {isEditingComment ? 'Update' : 'Save'}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

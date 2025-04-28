@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Text } from "@/components/ui/typography"
 import { Meal } from "@/types/dashboard"
-import { UploadCloud, Calendar, Clock, Info, Heart, Brain, Zap, AlertCircle, Dumbbell, X } from "lucide-react"
+import { UploadCloud, Calendar, Clock, Info, Heart, Brain, Zap, AlertCircle, Dumbbell, X, Utensils } from "lucide-react"
 import Image from "next/image"
 import {
   Dialog,
@@ -63,9 +63,18 @@ interface ParsedMeal {
       metabolic: string
       musculoskeletal: string
     }
+    pillarComments?: {
+      cardiovascular: string
+      cancer: string
+      cognitive: string
+      metabolic: string
+      musculoskeletal: string
+    }
     micronutrients?: { name: string; amount: string; unit: string; }[]
     health_benefits?: string[]
     recommendations?: string[]
+    overall_assessment?: string
+    health_concerns?: string[]
   }
   overallRating: string
   cardColor: string
@@ -97,9 +106,18 @@ function parseMealOutput(mealOutput: string | any): {
     metabolic: string,
     musculoskeletal: string
   },
+  pillarComments?: {
+    cardiovascular: string,
+    cancer: string,
+    cognitive: string,
+    metabolic: string,
+    musculoskeletal: string
+  },
   micronutrients?: { name: string; amount: string; unit: string; }[],
   health_benefits?: string[],
-  recommendations?: string[]
+  recommendations?: string[],
+  overall_assessment?: string,
+  health_concerns?: string[]
 } {
   // Default values
   let result = {
@@ -115,9 +133,18 @@ function parseMealOutput(mealOutput: string | any): {
       metabolic: "C",
       musculoskeletal: "C"
     },
+    pillarComments: {
+      cardiovascular: "",
+      cancer: "",
+      cognitive: "",
+      metabolic: "",
+      musculoskeletal: ""
+    },
     micronutrients: [] as { name: string; amount: string; unit: string; }[],
     health_benefits: [] as string[],
-    recommendations: [] as string[]
+    recommendations: [] as string[],
+    overall_assessment: "",
+    health_concerns: [] as string[]
   };
   
   try {
@@ -171,28 +198,48 @@ function parseMealOutput(mealOutput: string | any): {
         }
       }
       
-      // Extract health ratings
+      // Extract health ratings and notes
       if (outputData.analysis?.longevity_pillars) {
         const pillars = outputData.analysis.longevity_pillars;
         
         if (pillars.cardiovascular_health?.grade) {
           result.ratings.cardiovascular = pillars.cardiovascular_health.grade;
+          // Extract notes if available
+          if (pillars.cardiovascular_health?.notes) {
+            result.pillarComments.cardiovascular = pillars.cardiovascular_health.notes;
+          }
         }
         
         if (pillars.cancer_prevention?.grade) {
           result.ratings.cancer = pillars.cancer_prevention.grade;
+          // Extract notes if available
+          if (pillars.cancer_prevention?.notes) {
+            result.pillarComments.cancer = pillars.cancer_prevention.notes;
+          }
         }
         
         if (pillars.cognitive_health?.grade) {
           result.ratings.cognitive = pillars.cognitive_health.grade;
+          // Extract notes if available
+          if (pillars.cognitive_health?.notes) {
+            result.pillarComments.cognitive = pillars.cognitive_health.notes;
+          }
         }
         
         if (pillars.metabolic_health?.grade) {
           result.ratings.metabolic = pillars.metabolic_health.grade;
+          // Extract notes if available
+          if (pillars.metabolic_health?.notes) {
+            result.pillarComments.metabolic = pillars.metabolic_health.notes;
+          }
         }
         
         if (pillars.musculoskeletal_health?.grade) {
           result.ratings.musculoskeletal = pillars.musculoskeletal_health.grade;
+          // Extract notes if available
+          if (pillars.musculoskeletal_health?.notes) {
+            result.pillarComments.musculoskeletal = pillars.musculoskeletal_health.notes;
+          }
         }
       }
       
@@ -213,6 +260,22 @@ function parseMealOutput(mealOutput: string | any): {
       // Extract recommendations
       if (outputData.recommendations && Array.isArray(outputData.recommendations)) {
         result.recommendations = outputData.recommendations;
+      }
+      
+      // Extract overall nutritional assessment
+      if (outputData.overall_nutritional_assessment) {
+        result.overall_assessment = outputData.overall_nutritional_assessment;
+      }
+      
+      // Extract health benefits and concerns
+      if (outputData.health) {
+        if (outputData.health.benefits && Array.isArray(outputData.health.benefits)) {
+          result.health_benefits = outputData.health.benefits;
+        }
+        
+        if (outputData.health.concerns && Array.isArray(outputData.health.concerns)) {
+          result.health_concerns = outputData.health.concerns;
+        }
       }
     }
   } catch (error) {
@@ -442,7 +505,7 @@ export default function MealsList() {
               // Build the image URL
               const imageUrl = mealData.meal_image_url ? 
                 `${process.env.NEXT_PUBLIC_API_URL}/static/${mealData.meal_image_url}` : 
-                '/placeholder-meal.jpg';
+                '/images/meals/lasagna.jpeg';
               
               return {
                 ...mealData,
@@ -454,7 +517,17 @@ export default function MealsList() {
                 carbs: parsedOutput.carbs,
                 fat: parsedOutput.fat,
                 ratings: parsedOutput.ratings,
-                parsed: parsedOutput,
+                parsed: {
+                  ...parsedOutput,
+                  name: parsedOutput.name,
+                  calories: parsedOutput.calories,
+                  protein: parsedOutput.protein,
+                  carbs: parsedOutput.carbs,
+                  fat: parsedOutput.fat,
+                  ratings: parsedOutput.ratings,
+                  overall_assessment: parsedOutput.overall_assessment,
+                  health_concerns: parsedOutput.health_concerns
+                },
                 overallRating: calculateOverallRating(parsedOutput.ratings),
                 cardColor: getRatingColor(calculateOverallRating(parsedOutput.ratings))
               };
@@ -589,7 +662,7 @@ export default function MealsList() {
             // Build the image URL
             const imageUrl = mealData.meal_image_url ? 
               `${process.env.NEXT_PUBLIC_API_URL}/static/${mealData.meal_image_url}` : 
-              '/placeholder-meal.jpg';
+              '/images/meals/lasagna.jpeg';
             
             return {
               ...mealData,
@@ -601,7 +674,17 @@ export default function MealsList() {
               carbs: parsedOutput.carbs,
               fat: parsedOutput.fat,
               ratings: parsedOutput.ratings,
-              parsed: parsedOutput,
+              parsed: {
+                ...parsedOutput,
+                name: parsedOutput.name,
+                calories: parsedOutput.calories,
+                protein: parsedOutput.protein,
+                carbs: parsedOutput.carbs,
+                fat: parsedOutput.fat,
+                ratings: parsedOutput.ratings,
+                overall_assessment: parsedOutput.overall_assessment,
+                health_concerns: parsedOutput.health_concerns
+              },
               overallRating: calculateOverallRating(parsedOutput.ratings),
               cardColor: getRatingColor(calculateOverallRating(parsedOutput.ratings))
             };
@@ -758,11 +841,11 @@ export default function MealsList() {
             className="overflow-hidden border bg-background shadow cursor-pointer hover:shadow-md transition-shadow"
             onClick={() => setSelectedMeal(meal)}
           >
-            {meal.meal_image_url && (
+            {meal.image_url && (
               <div className="relative h-40 w-full">
                 <Image
                   alt={`Image of ${meal.parsed.name}`}
-                  src={meal.meal_image_url}
+                  src={meal.image_url}
                   layout="fill"
                   objectFit="cover"
                   className="h-full w-full object-cover"
@@ -919,6 +1002,53 @@ export default function MealsList() {
                 </div>
               </div>
               
+              {/* Overall Nutritional Assessment - if available */}
+              {selectedMeal.parsed.overall_assessment && (
+                <div>
+                  <h3 className="text-sm font-medium mb-3">Overall Assessment</h3>
+                  <div className="rounded-md border p-3">
+                    <p className="text-sm">{selectedMeal.parsed.overall_assessment}</p>
+                  </div>
+                </div>
+              )}
+              
+              {/* Health Benefits and Concerns together */}
+              {(() => {
+                const hasHealthBenefits = Array.isArray(selectedMeal.parsed.health_benefits) && selectedMeal.parsed.health_benefits.length > 0;
+                const hasHealthConcerns = Array.isArray(selectedMeal.parsed.health_concerns) && selectedMeal.parsed.health_concerns.length > 0;
+                
+                if (!hasHealthBenefits && !hasHealthConcerns) return null;
+                
+                return (
+                  <div>
+                    <h3 className="text-sm font-medium mb-3">Health Impact</h3>
+                    <div className="rounded-md border p-3">
+                      {hasHealthBenefits && (
+                        <div className="mb-3">
+                          <h4 className="text-xs font-semibold mb-2">Benefits:</h4>
+                          <ul className="list-disc pl-5 space-y-1 text-sm">
+                            {selectedMeal.parsed.health_benefits!.map((benefit, index) => (
+                              <li key={index} className="text-green-600">{benefit}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {hasHealthConcerns && (
+                        <div>
+                          <h4 className="text-xs font-semibold mb-2">Concerns:</h4>
+                          <ul className="list-disc pl-5 space-y-1 text-sm">
+                            {selectedMeal.parsed.health_concerns!.map((concern, index) => (
+                              <li key={index} className="text-amber-600">{concern}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+              
               {/* Health Ratings */}
               <div>
                 <h3 className="text-sm font-medium mb-3">Health Ratings</h3>
@@ -962,44 +1092,6 @@ export default function MealsList() {
                 </div>
               </div>
               
-              {/* Ingredients - Display if available in meal_output */}
-              {typeof selectedMeal.meal_output === 'string' && selectedMeal.meal_output.includes('Ingredients:') && (
-                <div>
-                  <h3 className="text-sm font-medium mb-3">Ingredients</h3>
-                  <div className="rounded-md border p-3">
-                    <div className="text-sm whitespace-pre-wrap">
-                      {extractSection(selectedMeal.meal_output, 'Ingredients:')}
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              {/* Preparation - Display if available in meal_output */}
-              {typeof selectedMeal.meal_output === 'string' && selectedMeal.meal_output.includes('Preparation:') && (
-                <div>
-                  <h3 className="text-sm font-medium mb-3">Preparation</h3>
-                  <div className="rounded-md border p-3">
-                    <div className="text-sm whitespace-pre-wrap">
-                      {extractSection(selectedMeal.meal_output, 'Preparation:')}
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              {/* Dietary Notes - Display if available in meal_output */}
-              {typeof selectedMeal.meal_output === 'string' && 
-               (selectedMeal.meal_output.includes('Dietary Notes:') || selectedMeal.meal_output.includes('Dietary Considerations:')) && (
-                <div>
-                  <h3 className="text-sm font-medium mb-3">Dietary Notes</h3>
-                  <div className="rounded-md border p-3">
-                    <div className="text-sm whitespace-pre-wrap">
-                      {extractSection(selectedMeal.meal_output, 'Dietary Notes:') || 
-                       extractSection(selectedMeal.meal_output, 'Dietary Considerations:')}
-                    </div>
-                  </div>
-                </div>
-              )}
-              
               {/* Micronutrients */}
               {selectedMeal.parsed.micronutrients && selectedMeal.parsed.micronutrients.length > 0 && (
                 <div>
@@ -1011,20 +1103,6 @@ export default function MealsList() {
                         <span className="font-medium">{nutrient.amount} {nutrient.unit}</span>
                       </div>
                     ))}
-                  </div>
-                </div>
-              )}
-              
-              {/* Health Benefits */}
-              {selectedMeal.parsed.health_benefits && selectedMeal.parsed.health_benefits.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-medium mb-3">Health Benefits</h3>
-                  <div className="rounded-md border p-3">
-                    <ul className="list-disc pl-5 space-y-1 text-sm">
-                      {selectedMeal.parsed.health_benefits.map((benefit, index) => (
-                        <li key={index}>{benefit}</li>
-                      ))}
-                    </ul>
                   </div>
                 </div>
               )}
@@ -1042,40 +1120,172 @@ export default function MealsList() {
                   </div>
                 </div>
               )}
-              
-              {/* Full Analysis */}
-              {typeof selectedMeal.meal_output === 'string' && (
-                <div>
-                  <h3 className="text-sm font-medium mb-3 flex items-center">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="h-7 text-xs" 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const el = document.getElementById(`full-analysis-${selectedMeal.id}`);
-                        if (el) {
-                          el.style.display = el.style.display === 'none' ? 'block' : 'none';
-                        }
-                      }}
-                    >
-                      <Info className="h-3 w-3 mr-1" /> View Full Analysis
-                    </Button>
-                  </h3>
-                  <div 
-                    id={`full-analysis-${selectedMeal.id}`} 
-                    className="rounded-md border p-3 max-h-[300px] overflow-y-auto"
-                    style={{ display: 'none' }}
-                  >
-                    <div className="text-sm whitespace-pre-wrap">
-                      {typeof selectedMeal.meal_output === 'string' 
-                        ? selectedMeal.meal_output 
-                        : JSON.stringify(selectedMeal.meal_output, null, 2)
-                      }
+
+              {/* Additional Meal Details */}
+              <div>
+                <h3 className="text-sm font-medium mb-3">Meal Details</h3>
+                <div className="rounded-md border p-3">
+                  <div className="grid gap-3 text-sm">
+                    {/* Meal Name with Icon */}
+                    <div className="flex items-center gap-2">
+                      <Utensils className="h-4 w-4 text-emerald-500" />
+                      <span className="font-medium">Meal Name:</span>
+                      <span>{selectedMeal.parsed.name}</span>
+                    </div>
+                    
+                    {/* Timestamp */}
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-blue-500" />
+                      <span className="font-medium">Date:</span>
+                      <span>{formatDate(selectedMeal.consumed_at)}</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-indigo-500" />
+                      <span className="font-medium">Time:</span>
+                      <span>{formatTime(selectedMeal.consumed_at)}</span>
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
+              
+              {/* Detailed Nutritional Information */}
+              <div>
+                <h3 className="text-sm font-medium mb-3">Detailed Nutrition</h3>
+                <div className="rounded-md border p-3">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Calories:</span>
+                      <span>{selectedMeal.parsed.calories} kcal</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Protein:</span>
+                      <span>{selectedMeal.parsed.protein}g</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Carbs:</span>
+                      <span>{selectedMeal.parsed.carbs}g</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Fat:</span>
+                      <span>{selectedMeal.parsed.fat}g</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pillar Specific Analysis */}
+              <div>
+                <h3 className="text-sm font-medium mb-3">Pillar Analysis</h3>
+                <div className="rounded-md border p-3">
+                  <div className="grid gap-3 text-sm">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Heart className="h-4 w-4 text-red-500" />
+                        <span className="font-medium">Cardiovascular:</span>
+                        <span className={getRatingColor(selectedMeal.parsed.ratings.cardiovascular)}>
+                          Grade {selectedMeal.parsed.ratings.cardiovascular}
+                        </span>
+                      </div>
+                      {selectedMeal.parsed.pillarComments?.cardiovascular && (
+                        <p className="mt-1 ml-6 text-muted-foreground text-xs">
+                          {selectedMeal.parsed.pillarComments.cardiovascular}
+                        </p>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 text-amber-500" />
+                        <span className="font-medium">Cancer Prevention:</span>
+                        <span className={getRatingColor(selectedMeal.parsed.ratings.cancer)}>
+                          Grade {selectedMeal.parsed.ratings.cancer}
+                        </span>
+                      </div>
+                      {selectedMeal.parsed.pillarComments?.cancer && (
+                        <p className="mt-1 ml-6 text-muted-foreground text-xs">
+                          {selectedMeal.parsed.pillarComments.cancer}
+                        </p>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Brain className="h-4 w-4 text-purple-500" />
+                        <span className="font-medium">Cognitive:</span>
+                        <span className={getRatingColor(selectedMeal.parsed.ratings.cognitive)}>
+                          Grade {selectedMeal.parsed.ratings.cognitive}
+                        </span>
+                      </div>
+                      {selectedMeal.parsed.pillarComments?.cognitive && (
+                        <p className="mt-1 ml-6 text-muted-foreground text-xs">
+                          {selectedMeal.parsed.pillarComments.cognitive}
+                        </p>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Zap className="h-4 w-4 text-blue-500" />
+                        <span className="font-medium">Metabolic:</span>
+                        <span className={getRatingColor(selectedMeal.parsed.ratings.metabolic)}>
+                          Grade {selectedMeal.parsed.ratings.metabolic}
+                        </span>
+                      </div>
+                      {selectedMeal.parsed.pillarComments?.metabolic && (
+                        <p className="mt-1 ml-6 text-muted-foreground text-xs">
+                          {selectedMeal.parsed.pillarComments.metabolic}
+                        </p>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Dumbbell className="h-4 w-4 text-green-500" />
+                        <span className="font-medium">Musculoskeletal:</span>
+                        <span className={getRatingColor(selectedMeal.parsed.ratings.musculoskeletal)}>
+                          Grade {selectedMeal.parsed.ratings.musculoskeletal}
+                        </span>
+                      </div>
+                      {selectedMeal.parsed.pillarComments?.musculoskeletal && (
+                        <p className="mt-1 ml-6 text-muted-foreground text-xs">
+                          {selectedMeal.parsed.pillarComments.musculoskeletal}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Additional Raw Data Toggle (For Developers/Debugging) */}
+              <div className="mt-2">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-xs text-muted-foreground"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const el = document.getElementById(`raw-data-${selectedMeal.id}`);
+                    if (el) {
+                      el.style.display = el.style.display === 'none' ? 'block' : 'none';
+                    }
+                  }}
+                >
+                  <Info className="h-3 w-3 mr-1" /> Show Raw Data
+                </Button>
+                <div 
+                  id={`raw-data-${selectedMeal.id}`} 
+                  className="rounded-md border p-3 mt-2 max-h-[300px] overflow-y-auto bg-gray-50"
+                  style={{ display: 'none' }}
+                >
+                  <div className="text-xs font-mono whitespace-pre-wrap">
+                    {typeof selectedMeal.meal_output === 'string' 
+                      ? selectedMeal.meal_output 
+                      : JSON.stringify(selectedMeal.meal_output, null, 2)
+                    }
+                  </div>
+                </div>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
